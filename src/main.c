@@ -5,5 +5,6 @@ int main(void)
     Turtle t;
     init(&t);
     forward(&t, 100);
+    done(&t);
     return 0;    
 }
