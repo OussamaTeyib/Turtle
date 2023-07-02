@@ -12,6 +12,7 @@ int main(void)
     left(&t, 90);
     forward(&t, 40);
 
+    left(&t, 90);
     goto (&t, 25, -25);
     forward(&t, 100);
     right(&t, 90);
