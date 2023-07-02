@@ -123,7 +123,7 @@ void __left(Turtle *t, void *params)
 
 void __goto(Turtle *t, void *params)
 {
-    GotoParams *gotoParams = (gotoParams *) params;
+    GotoParams *gotoParams = (GotoParams *) params;
 
     RECT rect;
     GetClientRect(t->hwnd, &rect);
