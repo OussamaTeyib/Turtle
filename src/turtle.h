@@ -15,16 +15,22 @@ typedef struct {
 struct Turtle {
     HWND hwnd;
     HDC hdc;
+    int angle;
     Command *cmdQueue;
     int nCmd;
+    int maxCmd;
 };
+
+#define MAXCMDS 50
 
 void die(char *msg);
 void init(Turtle *t);
 void done(Turtle *t);
-POINT GetCentre(HWND hwnd);
+void CreateCanavas(Turtle *t);
+void SetCentre(Turtle *t);
 void PostCommand(Turtle *t, cmdFunction cmd, void *params);
-void ExecuteForward(Turtle *t, void *params);
+void ExecuteCommands(Turtle *t);
+void __forward(Turtle *t, void *params);
 
 typedef struct
 {
@@ -35,7 +41,7 @@ typedef struct
      do \
      { \
          ForwardParams forwardParams = {distance}; \
-         PostCommand(t, ExecuteForward, &forwardParams); \
+         PostCommand(t, __forward, &forwardParams); \
      } while (0)
 
 #endif

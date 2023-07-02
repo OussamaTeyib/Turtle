@@ -8,12 +8,15 @@ void die(char *msg)
  
 void init(Turtle *t)
 {
-    t->cmdQueue = malloc(sizeof (Command) * 50); // max is 50
+    t->angle = 0;
+
+    t->maxCmd = MAXCMDS;
+    t->cmdQueue = malloc(t->maxCmd * sizeof (Command));
     t->nCmd = 0;
 }
 
-void done(Turtle *t)
-{ 
+void CreateCanavas(Turtle *t)
+{
     char *className = "MainWindow";
     HINSTANCE hInstance = GetModuleHandle(NULL);
 
@@ -38,43 +41,63 @@ void done(Turtle *t)
 
     t->hwnd = hwnd;
     t->hdc = GetDC(hwnd);
+    SetCentre(t);
 
-    MoveToEx(t->hdc, 100, 150, NULL);
-
-    for (int i = 0; i < t->nCmd; i++)
-    {
-         Command command = t->cmdQueue[i];
-         command.cmd(t, command.params);
-    }
+    ExecuteCommands(t);
 
     MSG msg;
     while (GetMessage(&msg, t->hwnd, 0, 0) > 0)
+    {
+        if (msg.message == WM_PAINT)
+        {
+            SetCentre(t);
+            ExecuteCommands(t);
+        }
         DispatchMessage(&msg);
-  
+    }
+
     ReleaseDC(t->hwnd, t->hdc);
+    UnregisterClass(className, hInstance);
+}
+
+void done(Turtle *t)
+{ 
+    CreateCanavas(t);
     free(t->cmdQueue);
-    UnregisterClass(className, hInstance);   
 }
 
 void PostCommand(Turtle *t, cmdFunction cmd, void *params)
 {
+    if (t->nCmd == t->maxCmd)
+    {
+        t->maxCmd *= 2;
+        Command *cmdQueue = realloc(t->cmdQueue, t->maxCmd * sizeof (Command));
+        if (cmdQueue)
+            t->cmdQueue = cmdQueue;
+    }
+
     Command command = {cmd, params};
     t->cmdQueue[t->nCmd] = command;
     t->nCmd++;
 }
 
-POINT GetCentre(HWND hwnd)
+void ExecuteCommands(Turtle *t)
 {
-    POINT centre;
-    RECT rect;
+    for (int i = 0; i < t->nCmd; i++)
+    {
+         Command command = t->cmdQueue[i];
+         command.cmd(t, command.params);
+    }
+}
 
-    GetClientRect(hwnd, &rect);
-    centre.x = rect.right / 2;
-    centre.y = rect.bottom / 2;
-    return centre;
+void SetCentre(Turtle *t)
+{
+    RECT rect;
+    GetClientRect(t->hwnd, &rect);
+    MoveToEx(t->hdc, rect.right / 2, rect.bottom / 2, NULL);
 }
     
-void ExecuteForward(Turtle *t, void *params)
+void __forward(Turtle *t, void *params)
 {
     ForwardParams *forwardParams = (ForwardParams *) params;
 
