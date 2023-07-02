@@ -1,4 +1,5 @@
 #include "turtle.h"
+#include <math.h>
 
 void die(char *msg)
 {
@@ -104,9 +105,12 @@ void __forward(Turtle *t, void *params)
     POINT curPos;
     GetCurrentPositionEx(t->hdc, &curPos);
 
+    double alpha = t->angle * M_PI / 180; // in radians
+
     POINT end;
-    end.x = curPos.x + forwardParams->distance;
-    end.y = curPos.y;
+    end.x = curPos.x + forwardParams->distance * cos(alpha);
+    end.y = curPos.y + forwardParams->distance * sin(alpha);
+
     LineTo(t->hdc, end.x, end.y);
     MoveToEx(t->hdc, end.x, end.y, NULL); // change the current position
 }
