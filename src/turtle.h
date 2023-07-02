@@ -15,7 +15,7 @@ typedef struct {
 struct Turtle {
     HWND hwnd;
     HDC hdc;
-    int angle;
+    double angle;
     Command *cmdQueue;
     int nCmd;
     int maxCmd;
