@@ -31,6 +31,8 @@ void SetCentre(Turtle *t);
 void PostCommand(Turtle *t, cmdFunction cmd, void *params);
 void ExecuteCommands(Turtle *t);
 void __forward(Turtle *t, void *params);
+void __left(Turtle *t, void *params);
+void __goto(Turtle *t, void *params);
 
 typedef struct
 {
@@ -42,6 +44,37 @@ typedef struct
      { \
          ForwardParams forwardParams = {distance}; \
          PostCommand(t, __forward, &forwardParams); \
+     } while (0)
+
+typedef struct
+{
+    double angle;
+} LeftParams;
+
+#define left(t, angle) \
+     do \
+     { \
+         LeftParams leftParams = {angle}; \
+         PostCommand(t, __left, &leftParams); \
+     } while (0)
+
+#define right(t, angle) \
+     do \
+     { \
+         LeftParams leftParams = {-angle}; \
+         PostCommand(t, __left, &leftParams); \
+     } while (0)
+
+typedef struct
+{
+    int x, y;
+} GotoParams;
+
+#define goto(t, x, y) \
+     do \
+     { \
+         GotoParams gotoParams = {x, y}; \
+         PostCommand(t, __goto, &gotoParams); \
      } while (0)
 
 #endif

@@ -109,8 +109,26 @@ void __forward(Turtle *t, void *params)
 
     POINT end;
     end.x = curPos.x + forwardParams->distance * cos(alpha);
-    end.y = curPos.y + forwardParams->distance * sin(alpha);
+    end.y = curPos.y - forwardParams->distance * sin(alpha); // '-' because that y-axis increases downward
 
     LineTo(t->hdc, end.x, end.y);
     MoveToEx(t->hdc, end.x, end.y, NULL); // change the current position
+}
+
+void __left(Turtle *t, void *params)
+{
+    LeftParams *leftParams = (LeftParams *) params;
+    t->angle += leftParams->angle;
+}
+
+void __goto(Turtle *t, void *params)
+{
+    GotoParams *gotoParams = (gotoParams *) params;
+
+    RECT rect;
+    GetClientRect(t->hwnd, &rect);
+    POINT newPos;
+    newPos.x = rect.right / 2 + gotoParams->x;
+    newPos.y = rect.bottom / 2 - gotoParams->y; // '-' because that y-axis increases downward
+    MoveToEx(t->hdc, newPos.x, newPos.y, NULL);
 }
