@@ -23,13 +23,9 @@ struct Turtle {
 
 #define MAXCMDS 50
 
-void die(char *msg);
 void init(Turtle *t);
 void done(Turtle *t);
-void CreateCanavas(Turtle *t);
-void SetCentre(Turtle *t);
 void PostCommand(Turtle *t, cmdFunction cmd, void *params);
-void ExecuteCommands(Turtle *t);
 void __forward(Turtle *t, void *params);
 void __left(Turtle *t, void *params);
 void __goto(Turtle *t, void *params);
@@ -54,14 +50,14 @@ typedef struct
 #define left(t, angle) \
      do \
      { \
-         LeftParams leftParams = {angle}; \
+         LeftParams leftParams = {(angle)}; \
          PostCommand(t, __left, &leftParams); \
      } while (0)
 
 #define right(t, angle) \
      do \
      { \
-         LeftParams leftParams = {-angle}; \
+         LeftParams leftParams = {(-angle)}; \
          PostCommand(t, __left, &leftParams); \
      } while (0)
 
@@ -73,7 +69,7 @@ typedef struct
 #define goto(t, x, y) \
      do \
      { \
-         GotoParams gotoParams = {x, y}; \
+         GotoParams gotoParams = {(x), (y)}; \
          PostCommand(t, __goto, &gotoParams); \
      } while (0)
 
