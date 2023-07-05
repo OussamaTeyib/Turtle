@@ -147,3 +147,32 @@ void __goto(Turtle *t, void *params)
     newPos.y = rect.bottom / 2 - gotoParams->y; // '-' because that y-axis increases downward
     MoveToEx(t->hdc, newPos.x, newPos.y, NULL);
 }
+
+void __circle(Turtle *t, void *params)
+{
+    CircleParams *circleParams = (CircleParams *) params;
+
+    POINT curPos;
+    GetCurrentPositionEx(t->hdc, &curPos);
+
+    RECT rect;
+    rect.left = curPos.x - circleParams->r;
+    rect.top = curPos.y - circleParams->r;
+    rect.right = curPos.x + circleParams->r;
+    rect.bottom = curPos.y + circleParams->r;
+
+    Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
+}
+
+void __color(Turtle *t, void *params)
+{
+    ColorParams *colorParams = (ColorParams *) params;
+
+    HPEN hPen = CreatePen(PS_SOLID, 1, colorParams->cl);
+    SelectObject(t->hdc, hPen);
+
+    HBRUSH hBrush = CreateSolidBrush(colorParams->cl);
+    SelectObject(t->hdc, hBrush);
+
+    // delete it
+}

@@ -29,6 +29,9 @@ void PostCommand(Turtle *t, cmdFunction cmd, void *params);
 void __forward(Turtle *t, void *params);
 void __left(Turtle *t, void *params);
 void __goto(Turtle *t, void *params);
+void __circle(Turtle *t, void *params);
+void __color(Turtle *t, void *params);
+
 
 typedef struct
 {
@@ -38,7 +41,7 @@ typedef struct
 #define forward(t, distance) \
      do \
      { \
-         ForwardParams forwardParams = {distance}; \
+         ForwardParams forwardParams = {(distance)}; \
          PostCommand(t, __forward, &forwardParams); \
      } while (0)
 
@@ -71,6 +74,30 @@ typedef struct
      { \
          GotoParams gotoParams = {(x), (y)}; \
          PostCommand(t, __goto, &gotoParams); \
+     } while (0)
+
+typedef struct
+{
+    int r;
+} CircleParams;
+
+#define circle(t, r) \
+     do \
+     { \
+         CircleParams circleParams = {(r)}; \
+         PostCommand(t, __circle, &circleParams); \
+     } while (0)
+
+typedef struct
+{
+    COLORREF cl;
+} ColorParams;
+
+#define color(t, cl) \
+     do \
+     { \
+         ColorParams colorParams = {(cl)}; \
+         PostCommand(t, __color, &colorParams); \
      } while (0)
 
 #endif
