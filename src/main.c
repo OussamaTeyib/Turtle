@@ -4,23 +4,16 @@ int main(void)
 {
     Turtle t;
     init(&t);
-    forward(&t, 100);
-    left(&t, 90);
-    forward(&t, 40);
-    left(&t, 90);
-    forward(&t, 100);
-    left(&t, 90);
-    forward(&t, 40);
 
-    left(&t, 90);
-    goto (&t, 25, -25);
+    for (int i = 0; i < 4; i++)
+    {
+        int d = 100 - 40 * (i % 2);
+        forward(&t, d);
+        left(&t, 90);
+    }
+
+    goto(&t, 0, -10);
     forward(&t, 100);
-    right(&t, 90);
-    forward(&t, 40);
-    right(&t, 90);
-    forward(&t, 100);
-    right(&t, 90);
-    forward(&t, 40);
 
     done(&t);
     return 0;    
