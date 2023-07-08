@@ -1,16 +1,12 @@
 #ifndef TURTLE_H
 #define TURTLE_H
 
-#include <windows.h>
-
 typedef void (*cmdFunction) (void *);
 
 typedef struct {
     cmdFunction cmd;
     void *params;
 } Command;
-
-#define MAXCMDS 50
 
 void init(void);
 void show(void);
@@ -42,7 +38,7 @@ typedef struct
 #define left(angle) \
      do \
      { \
-         LeftParams leftParams = {(angle)}; \
+         LeftParams leftParams = {((double) (angle))}; \
          PostCommand(__left, &leftParams); \
      } while (0)
 
@@ -79,7 +75,7 @@ typedef struct
 
 typedef struct
 {
-    COLORREF color;
+    int color;
 } ColorParams;
 
 #define color(color) \

@@ -1,6 +1,8 @@
 #include "turtle.h"
+#include <windows.h>
 #include <math.h>
-#include <stdio.h>
+
+#define MAX_CMDS 50
 
 typedef struct {
     HWND hwnd;
@@ -23,9 +25,8 @@ void init(void)
     if (t)
     {
         t->nCmd = 0;
-        t->maxCmd = MAXCMDS;
-        t->cmdQueue = malloc(t->maxCmd * sizeof (Command));   
-        t->angle = 0;
+        t->maxCmd = MAX_CMDS;
+        t->cmdQueue = malloc(t->maxCmd * sizeof (Command));
     }
 }
 
@@ -107,10 +108,7 @@ void show(void)
 
 void PostCommand(cmdFunction cmd, void *params)
 {
-    if (!t)
-       return;
-
-    if(!t->cmdQueue)
+    if (!t || !t->cmdQueue)
        return;
 
     if (t->nCmd == t->maxCmd)
@@ -128,6 +126,7 @@ void PostCommand(cmdFunction cmd, void *params)
 
 static void ExecuteCommands(void)
 {
+    t->angle = 0.0L;
     for (int i = 0; i < t->nCmd; i++)
     {
          Command command = t->cmdQueue[i];
@@ -142,7 +141,7 @@ void __forward(void *params)
     POINT curPos;
     GetCurrentPositionEx(t->hdc, &curPos);
 
-    double alpha = t->angle * M_PI / 180; // in radians
+    double alpha = t->angle * M_PI / 180.0L; // in radians
 
     POINT end;
     end.x = curPos.x + forwardParams->distance * cos(alpha);
