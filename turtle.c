@@ -2,20 +2,34 @@
 #include <math.h>
 #include <stdio.h>
 
+typedef struct {
+    HWND hwnd;
+    HDC hdc;
+    double angle;
+    Command *cmdQueue;
+    int nCmd;
+    int maxCmd;
+} Turtle;
+
+static Turtle *t = NULL;
+
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
-static void CreateCanvas(Turtle *t);
-static void ExecuteCommands(Turtle *t);
+static void CreateCanvas(void);
+static void ExecuteCommands(void);
 
-void init(Turtle *t)
+void init(void)
 {
-    t->angle = 0;
-
-    t->maxCmd = MAXCMDS;
-    t->cmdQueue = malloc(t->maxCmd * sizeof (Command));
-    t->nCmd = 0;
+    t = malloc(sizeof (Turtle));
+    if (t)
+    {
+        t->nCmd = 0;
+        t->maxCmd = MAXCMDS;
+        t->cmdQueue = malloc(t->maxCmd * sizeof (Command));   
+        t->angle = 0;
+    }
 }
 
-static void CreateCanvas(Turtle *t)
+static void CreateCanvas(void)
 {
     char *className = "MainWindow";
     HINSTANCE hInstance = GetModuleHandle(NULL);
@@ -30,7 +44,7 @@ static void CreateCanvas(Turtle *t)
 
     RegisterClass(&wc);
 
-    HWND hwnd = CreateWindow(className, "Turtle in C", WS_OVERLAPPEDWINDOW, 250, 100, 820, 470, NULL, NULL, hInstance, t);
+    HWND hwnd = CreateWindow(className, "Turtle in C", WS_OVERLAPPEDWINDOW, 250, 100, 820, 470, NULL, NULL, hInstance, NULL);
 
     ShowWindow(hwnd, SW_SHOWDEFAULT);
     UpdateWindow(hwnd);
@@ -44,7 +58,6 @@ static void CreateCanvas(Turtle *t)
 
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
-    static Turtle *t;
     static int xClient, yClient;
     static HINSTANCE hInstance;
     static char ClassName[100];
@@ -53,9 +66,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
     switch(message)
     {
         case WM_CREATE:
-            t = ((LPCREATESTRUCT) lParam)->lpCreateParams;
+            if (t)
+                t->hwnd = hwnd;
 
-            t->hwnd = hwnd;
             hInstance = GetModuleHandle(NULL);
             GetClassName(hwnd, ClassName, 100);
             return 0;
@@ -66,12 +79,15 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
             return 0;
 
         case WM_PAINT:
-            t->hdc = BeginPaint(t->hwnd, &ps);
+            if (t)
+            {
+                t->hdc = BeginPaint(t->hwnd, &ps);
 
-            MoveToEx(t->hdc, xClient / 2, yClient / 2, NULL);
-            ExecuteCommands(t);
+                MoveToEx(t->hdc, xClient / 2, yClient / 2, NULL);
+                ExecuteCommands();
 
-            EndPaint(t->hwnd, &ps);
+                EndPaint(t->hwnd, &ps);
+            }
             return 0;
 
         case WM_DESTROY:
@@ -82,14 +98,21 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
     return DefWindowProc(hwnd, message, wParam, lParam);
 }
 
-void done(Turtle *t)
+void show(void)
 { 
-    CreateCanvas(t);
+    CreateCanvas();
     free(t->cmdQueue);
+    free(t);
 }
 
-void PostCommand(Turtle *t, cmdFunction cmd, void *params)
+void PostCommand(cmdFunction cmd, void *params)
 {
+    if (!t)
+       return;
+
+    if(!t->cmdQueue)
+       return;
+
     if (t->nCmd == t->maxCmd)
     {
         t->maxCmd *= 2;
@@ -103,16 +126,16 @@ void PostCommand(Turtle *t, cmdFunction cmd, void *params)
     t->nCmd++;
 }
 
-static void ExecuteCommands(Turtle *t)
+static void ExecuteCommands(void)
 {
     for (int i = 0; i < t->nCmd; i++)
     {
          Command command = t->cmdQueue[i];
-         command.cmd(t, command.params);
+         command.cmd(command.params);
     }
 }
     
-void __forward(Turtle *t, void *params)
+void __forward(void *params)
 {
     ForwardParams *forwardParams = (ForwardParams *) params;
 
@@ -126,16 +149,15 @@ void __forward(Turtle *t, void *params)
     end.y = curPos.y - forwardParams->distance * sin(alpha); // '-' because that y-axis increases downward
 
     LineTo(t->hdc, end.x, end.y);
-    MoveToEx(t->hdc, end.x, end.y, NULL); // change the current position
 }
 
-void __left(Turtle *t, void *params)
+void __left(void *params)
 {
     LeftParams *leftParams = (LeftParams *) params;
     t->angle += leftParams->angle;
 }
 
-void __goto(Turtle *t, void *params)
+void __goto(void *params)
 {
     t->angle = 0;
     GotoParams *gotoParams = (GotoParams *) params;
@@ -148,7 +170,7 @@ void __goto(Turtle *t, void *params)
     MoveToEx(t->hdc, newPos.x, newPos.y, NULL);
 }
 
-void __circle(Turtle *t, void *params)
+void __circle(void *params)
 {
     CircleParams *circleParams = (CircleParams *) params;
 
@@ -164,14 +186,14 @@ void __circle(Turtle *t, void *params)
     Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
 }
 
-void __color(Turtle *t, void *params)
+void __color(void *params)
 {
     ColorParams *colorParams = (ColorParams *) params;
 
-    HPEN hPen = CreatePen(PS_SOLID, 1, colorParams->cl);
+    HPEN hPen = CreatePen(PS_SOLID, 1, colorParams->color);
     SelectObject(t->hdc, hPen);
 
-    HBRUSH hBrush = CreateSolidBrush(colorParams->cl);
+    HBRUSH hBrush = CreateSolidBrush(colorParams->color);
     SelectObject(t->hdc, hBrush);
 
     // delete it
