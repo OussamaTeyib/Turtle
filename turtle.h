@@ -1,88 +1,16 @@
 #ifndef TURTLE_H
 #define TURTLE_H
 
-typedef void (*cmdFunction) (void *);
-
-typedef struct {
-    cmdFunction cmd;
-    void *params;
-} Command;
-
 void init(void);
 void show(void);
-void PostCommand(cmdFunction cmd, void *params);
-void __forward(void *params);
-void __left(void *params);
-void __goto(void *params);
-void __circle(void *params);
-void __color(void *params);
+void forward(int distance);
+void left(double angle);
+void right(double angle);
+void setpos(int x, int y);
+void circle(int r);
+void color(int color);
 
-
-typedef struct
-{
-    int distance;
-} ForwardParams;
-
-#define forward(distance) \
-     do \
-     { \
-         ForwardParams forwardParams = {(distance)}; \
-         PostCommand(__forward, &forwardParams); \
-     } while (0)
-
-typedef struct
-{
-    double angle;
-} LeftParams;
-
-#define left(angle) \
-     do \
-     { \
-         LeftParams leftParams = {((double) (angle))}; \
-         PostCommand(__left, &leftParams); \
-     } while (0)
-
-#define right(angle) \
-     do \
-     { \
-         LeftParams leftParams = {(-angle)}; \
-         PostCommand(__left, &leftParams); \
-     } while (0)
-
-typedef struct
-{
-    int x, y;
-} GotoParams;
-
-#define goto(x, y) \
-     do \
-     { \
-         GotoParams gotoParams = {(x), (y)}; \
-         PostCommand(__goto, &gotoParams); \
-     } while (0)
-
-typedef struct
-{
-    int r;
-} CircleParams;
-
-#define circle(r) \
-     do \
-     { \
-         CircleParams circleParams = {(r)}; \
-         PostCommand(__circle, &circleParams); \
-     } while (0)
-
-typedef struct
-{
-    int color;
-} ColorParams;
-
-#define color(color) \
-     do \
-     { \
-         ColorParams colorParams = {(color)}; \
-         PostCommand(__color, &colorParams); \
-     } while (0)
+#define fd(distance) forward((distance))
+#define goto(x, y) setpos((x), (y))
 
 #endif
