@@ -20,6 +20,7 @@ static void __forward(void *params);
 static void __left(void *params);
 static void __setpos(void *params);
 static void __circle(void *params);
+static void __rectangle(void *params);
 static void __color(void *params);
 
 typedef struct {
@@ -258,6 +259,34 @@ static void __circle(void *params)
     rect.bottom = curPos.y + circleParams->r;
 
     Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
+}
+
+typedef struct {
+    int length, width;
+} RectangleParams;
+
+void rectangle(int length, int width)
+{
+    RectangleParams *rectangleParams = malloc(sizeof (RectangleParams));
+    rectangleParams->length = length;
+    rectangleParams->width = width;
+    PostCommand(__rectangle, rectangleParams);
+}
+
+static void __rectangle(void *params)
+{
+    RectangleParams *rectangleParams = (RectangleParams *) params;
+
+    POINT curPos;
+    GetCurrentPositionEx(t->hdc, &curPos);
+
+    RECT rect;
+    rect.left = curPos.x;
+    rect.top = curPos.y - rectangleParams->width;
+    rect.right = curPos.x + rectangleParams->length;
+    rect.bottom = curPos.y;
+
+    Rectangle(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
 }
 
 typedef struct

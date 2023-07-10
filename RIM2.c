@@ -9,20 +9,29 @@
 int main(void)
 {
     init();
-    goto(-30, -25);
+    goto(-150, -100);
     color(RED);
-    for (int i = 0; i < 4; i++)
-    {
-        forward(60 - 10 * (i % 2));
-        left(90);
-    }
+    rectangle(300, 200);
 
-    goto(-30, -15);
+    goto(-150, -70);
     color(GREEN);
-    for (int i = 0; i < 4; i++)
+    rectangle(300, 140);
+
+    goto(0, -10);
+    color(YELLOW);
+    circle(50);
+
+    goto(0, 5);
+    color(GREEN);
+    circle(50);
+
+    goto(20, -5);
+    left(108);
+    color(YELLOW);
+    for (int i = 0; i < 5; i++)
     {
-        forward(60 - 30 * (i % 2));
-        left(90);
+        forward(60);
+        left(144);
     }
 
     show();
