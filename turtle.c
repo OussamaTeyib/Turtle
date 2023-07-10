@@ -4,6 +4,24 @@
 
 #define MAX_CMDS 50
 
+typedef void (*cmdFunction) (void *);
+
+typedef struct {
+    cmdFunction cmd;
+    void *params;
+} Command;
+
+static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
+static void CreateCanvas(void);
+static void cleanup(void);
+static void ExecuteCommands(void);
+static void PostCommand(cmdFunction cmd, void *params);
+static void __forward(void *params);
+static void __left(void *params);
+static void __setpos(void *params);
+static void __circle(void *params);
+static void __color(void *params);
+
 typedef struct {
     HWND hwnd;
     HDC hdc;
@@ -14,10 +32,6 @@ typedef struct {
 } Turtle;
 
 static Turtle *t = NULL;
-
-static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
-static void CreateCanvas(void);
-static void ExecuteCommands(void);
 
 void init(void)
 {
@@ -67,11 +81,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
     switch(message)
     {
         case WM_CREATE:
-            if (t)
-                t->hwnd = hwnd;
+            t->hwnd = hwnd;
 
             hInstance = GetModuleHandle(NULL);
-            GetClassName(hwnd, ClassName, 100);
+            GetClassName(t->hwnd, ClassName, 100);
             return 0;
 
         case WM_SIZE:
@@ -80,15 +93,12 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
             return 0;
 
         case WM_PAINT:
-            if (t)
-            {
-                t->hdc = BeginPaint(t->hwnd, &ps);
+            t->hdc = BeginPaint(t->hwnd, &ps);
 
-                MoveToEx(t->hdc, xClient / 2, yClient / 2, NULL);
-                ExecuteCommands();
+            MoveToEx(t->hdc, xClient / 2, yClient / 2, NULL);
+            ExecuteCommands();
 
-                EndPaint(t->hwnd, &ps);
-            }
+            EndPaint(t->hwnd, &ps);
             return 0;
 
         case WM_DESTROY:
@@ -101,12 +111,23 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
 
 void show(void)
 { 
+    if (!t || !t->cmdQueue)
+       return;
+
     CreateCanvas();
+    cleanup();
+}
+
+static void cleanup(void)
+{
+    for (int i = 0; i < t->nCmd; i++)
+        free(t->cmdQueue[i].params);
+
     free(t->cmdQueue);
     free(t);
 }
 
-void PostCommand(cmdFunction cmd, void *params)
+static void PostCommand(cmdFunction cmd, void *params)
 {
     if (!t || !t->cmdQueue)
        return;
@@ -126,22 +147,34 @@ void PostCommand(cmdFunction cmd, void *params)
 
 static void ExecuteCommands(void)
 {
-    t->angle = 0.0L;
+    t->angle = 0.0;
     for (int i = 0; i < t->nCmd; i++)
     {
          Command command = t->cmdQueue[i];
          command.cmd(command.params);
     }
 }
-    
-void __forward(void *params)
+ 
+typedef struct
+{
+    int distance;
+} ForwardParams;
+
+void forward(int distance)
+{
+    ForwardParams *forwardParams = malloc(sizeof (ForwardParams));
+    forwardParams->distance = distance;
+    PostCommand(__forward, forwardParams);
+}
+  
+static void __forward(void *params)
 {
     ForwardParams *forwardParams = (ForwardParams *) params;
 
     POINT curPos;
     GetCurrentPositionEx(t->hdc, &curPos);
 
-    double alpha = t->angle * M_PI / 180.0L; // in radians
+    double alpha = t->angle * M_PI / 180.0; // in radians
 
     POINT end;
     end.x = curPos.x + forwardParams->distance * cos(alpha);
@@ -150,26 +183,68 @@ void __forward(void *params)
     LineTo(t->hdc, end.x, end.y);
 }
 
-void __left(void *params)
+typedef struct 
+{
+    double angle;
+} LeftParams;
+
+void left(double angle)
+{
+    LeftParams *leftParams = malloc(sizeof (LeftParams));
+    leftParams->angle = angle;
+    PostCommand(__left, leftParams);
+}
+
+void right(double angle)
+{   
+    LeftParams *leftParams = malloc(sizeof (LeftParams));
+    leftParams->angle = -angle;
+    PostCommand(__left, leftParams);
+}
+
+static void __left(void *params)
 {
     LeftParams *leftParams = (LeftParams *) params;
     t->angle += leftParams->angle;
 }
 
-void __goto(void *params)
+typedef struct
 {
-    t->angle = 0;
-    GotoParams *gotoParams = (GotoParams *) params;
+    int x, y;
+} SetposParams;
+
+void setpos(int x, int y)
+{
+    SetposParams *setposParams = malloc(sizeof (SetposParams));
+    setposParams->x = x, setposParams->y = y;
+    PostCommand(__setpos, setposParams);
+}
+
+static void __setpos(void *params)
+{
+    SetposParams *setposParams = (SetposParams *) params;
 
     RECT rect;
     GetClientRect(t->hwnd, &rect);
     POINT newPos;
-    newPos.x = rect.right / 2 + gotoParams->x;
-    newPos.y = rect.bottom / 2 - gotoParams->y; // '-' because that y-axis increases downward
+    newPos.x = rect.right / 2 + setposParams->x;
+    newPos.y = rect.bottom / 2 - setposParams->y; // '-' because that y-axis increases downward
     MoveToEx(t->hdc, newPos.x, newPos.y, NULL);
 }
 
-void __circle(void *params)
+typedef struct
+{
+    int r;
+} CircleParams;
+
+void circle(int r)
+{
+    CircleParams *circleParams = malloc(sizeof (CircleParams));
+    circleParams->r = r;
+    PostCommand(__circle, circleParams);
+}
+
+static void __circle(void *params)
 {
     CircleParams *circleParams = (CircleParams *) params;
 
@@ -185,7 +260,19 @@ void __circle(void *params)
     Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
 }
 
-void __color(void *params)
+typedef struct
+{
+    int color;
+} ColorParams;
+
+void color(int color)
+{
+     ColorParams *colorParams = malloc(sizeof (ColorParams));
+     colorParams->color = color;
+     PostCommand(__color, colorParams);
+}
+
+static void __color(void *params)
 {
     ColorParams *colorParams = (ColorParams *) params;
 
