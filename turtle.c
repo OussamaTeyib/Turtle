@@ -291,13 +291,13 @@ static void __rectangle(void *params)
 
 typedef struct
 {
-    int color;
+    const char *szColor;
 } ColorParams;
 
-void color(int color)
+void color(const char *szColor)
 {
      ColorParams *colorParams = malloc(sizeof (ColorParams));
-     colorParams->color = color;
+     colorParams->szColor = szColor;
      PostCommand(__color, colorParams);
 }
 
@@ -305,10 +305,26 @@ static void __color(void *params)
 {
     ColorParams *colorParams = (ColorParams *) params;
 
-    HPEN hPen = CreatePen(PS_SOLID, 1, colorParams->color);
+    COLORREF color; 
+    if (!strncmp(colorParams->szColor, "white", 5))
+        color = RGB(255, 255, 255);
+    else if (!strncmp(colorParams->szColor, "black", 5))
+        color = RGB(0, 0, 0);
+    else if (!strncmp(colorParams->szColor, "red", 3))
+        color = RGB(255, 0, 0);
+    else if (!strncmp(colorParams->szColor, "green", 5))
+        color = RGB(0, 255, 0);
+    else if (!strncmp(colorParams->szColor, "blue", 4))
+        color = RGB(0, 0, 255);
+    else if (!strncmp(colorParams->szColor, "yellow", 6))
+        color = RGB(255, 255, 0);
+    else
+        return;
+
+    HPEN hPen = CreatePen(PS_SOLID, 1, color);
     SelectObject(t->hdc, hPen);
 
-    HBRUSH hBrush = CreateSolidBrush(colorParams->color);
+    HBRUSH hBrush = CreateSolidBrush(color);
     SelectObject(t->hdc, hBrush);
 
     // delete it

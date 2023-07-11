@@ -1,33 +1,27 @@
 #include <turtle.h>
-#include <windows.h>
-
-#define WHITE RGB(255, 255, 255)
-#define RED RGB(255, 0, 0)
-#define GREEN RGB(0, 255, 0)
-#define YELLOW RGB(255, 255, 0)
 
 int main(void)
 {
     init();
     goto(-150, -100);
-    color(RED);
+    color("red");
     rectangle(300, 200);
 
     goto(-150, -70);
-    color(GREEN);
+    color("green");
     rectangle(300, 140);
 
     goto(0, -10);
-    color(YELLOW);
+    color("yellow");
     circle(50);
 
     goto(0, 5);
-    color(GREEN);
+    color("green");
     circle(50);
 
     goto(20, -5);
     left(108);
-    color(YELLOW);
+    color("yellow");
     for (int i = 0; i < 5; i++)
     {
         forward(60);
