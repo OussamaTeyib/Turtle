@@ -1,16 +1,10 @@
 #include <turtle.h>
-#include <windows.h>
-
-#define WHITE RGB(255, 255, 255)
-#define RED RGB(255, 0, 0)
-#define GREEN RGB(0, 255, 0)
-#define YELLOW RGB(255, 255, 0)
 
 int main(void)
 {
     init();
     goto(-150, -100);
-    color(RED);
+    color("red");
     for (int i = 0; i < 4; i++)
     {
         forward(300 - 100 * (i % 2));
@@ -18,7 +12,7 @@ int main(void)
     }
 
     goto(-150, -70);
-    color(GREEN);
+    color("green");
     for (int i = 0; i < 4; i++)
     {
         forward(300 - 160 * (i % 2));
@@ -26,16 +20,16 @@ int main(void)
     }
 
     goto(0, -10);
-    color(YELLOW);
+    color("yellow");
     circle(50);
 
     goto(0, 5);
-    color(WHITE);
+    color("white");
     circle(50);
 
     goto(20, -5);
     left(108);
-    color(YELLOW);
+    color("yellow");
     for (int i = 0; i < 5; i++)
     {
         forward(60);
