@@ -18,6 +18,7 @@ static void ExecuteCommands(void);
 static void PostCommand(cmdFunction cmd, void *params);
 static void __forward(void *params);
 static void __left(void *params);
+static void __setAngle(void *params);
 static void __setpos(void *params);
 static void __circle(void *params);
 static void __rectangle(void *params);
@@ -178,8 +179,8 @@ static void __forward(void *params)
     double alpha = t->angle * M_PI / 180.0; // in radians
 
     POINT end;
-    end.x = curPos.x + forwardParams->distance * cos(alpha);
-    end.y = curPos.y - forwardParams->distance * sin(alpha); // '-' because that y-axis increases downward
+    end.x = round(curPos.x + forwardParams->distance * cos(alpha));
+    end.y = round(curPos.y - forwardParams->distance * sin(alpha)); // '-' because that y-axis increases downward
 
     LineTo(t->hdc, end.x, end.y);
 }
@@ -207,6 +208,19 @@ static void __left(void *params)
 {
     LeftParams *leftParams = (LeftParams *) params;
     t->angle += leftParams->angle;
+}
+
+void setAngle(double angle)
+{
+    LeftParams *leftParams = malloc(sizeof (LeftParams));
+    leftParams->angle = angle;
+    PostCommand(__setAngle, leftParams);
+}
+
+static void __setAngle(void *params)
+{
+    LeftParams *leftParams = (LeftParams *) params;
+    t->angle = leftParams->angle;
 }
 
 typedef struct
@@ -304,6 +318,8 @@ void color(const char *szColor)
 static void __color(void *params)
 {
     ColorParams *colorParams = (ColorParams *) params;
+
+    // handle uppercase chars
 
     COLORREF color; 
     if (!strncmp(colorParams->szColor, "white", 5))

@@ -27,7 +27,7 @@ int main(void)
     color("white");
     circle(50);
 
-    goto(20, -5);
+    goto(18, -5);
     left(108);
     color("yellow");
     for (int i = 0; i < 5; i++)
