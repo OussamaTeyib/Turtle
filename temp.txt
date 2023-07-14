@@ -1,0 +1,97 @@
+typedef struct {
+   POINT *apt;
+   int count;
+   COLORREF color;
+   bool fill;
+} PolygonParams;
+
+/*
+static void HandleExCommands(void)
+{
+    CommandEx *cmdQueue = malloc(MAX_CMDS * sizeof (CommandEx));
+    int cmdQueueCount = 0;
+
+    for (int i = 0; i < t->nCmdEx;)
+    {
+        if (t->cmdQueueEx[i].cmd == __move)
+        {
+            bool repeated = false;
+            MoveParams *moveParams = (MoveParams *) t->cmdQueueEx[i].params;
+
+            for (int j = i + 1; j < t->nCmdEx; j++)
+            {   
+                if (t->cmdQueueEx[j].cmd != __move)
+                    break;
+
+                MoveParams *temp = (MoveParams *) t->cmdQueueEx[j].params;
+
+                if (temp->dest.x == moveParams->dest.x && temp->dest.y == moveParams->dest.y)
+                {
+                    repeated = true;
+                    for (int k = i; k <= j; k++)
+                    {
+                        cmdQueue[cmdQueueCount]= t->cmdQueueEx[k];
+                        cmdQueueCount++;
+                    }
+
+                    PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
+                    polygonParams->count = j - i + 1;
+                    polygonParams->apt = malloc(polygonParams->count * sizeof (POINT));
+
+                    //   ---   free apt !!----
+
+                    polygonParams->fill = true;
+
+                    for (int k = i; k <= j; k++)
+                    {
+                        MoveParams *temp = (MoveParams *) t->cmdQueueEx[k].params;
+                        polygonParams->apt[k - i] = temp->dest;
+                        polygonParams->color = temp->color; // the color of is the clr of the last line
+                    }
+
+                    cmdQueue[cmdQueueCount].cmd = __polygon;
+                    cmdQueue[cmdQueueCount].params = polygonParams;
+                    cmdQueueCount++;
+                    
+                    i = j;
+                    break;                    
+                }
+            }
+
+            if (!repeated)
+            {
+                cmdQueue[cmdQueueCount] = t->cmdQueueEx[i];
+                cmdQueueCount++;
+                i++;
+            }    
+        }
+        else
+        {
+            cmdQueue[cmdQueueCount] = t->cmdQueueEx[i];
+            cmdQueueCount++;
+            i++;
+        }
+    }
+
+    t->cmdQueueEx = cmdQueue;
+    t->nCmdEx = cmdQueueCount;
+}
+
+static void __polygon(void *params)
+{
+    PolygonParams *polygonParams = (PolygonParams *) params;
+
+    if (polygonParams->fill)
+    {
+       HPEN hPen = CreatePen(PS_SOLID, 1, polygonParams->color);
+       SelectObject(t->hdc, hPen);
+
+       HBRUSH hBrush = CreateSolidBrush(polygonParams->color);
+       SelectObject(t->hdc, hBrush);
+
+       // clean - up
+    }
+
+    Polygon(t->hdc, polygonParams->apt, polygonParams->count);
+}
+*/
