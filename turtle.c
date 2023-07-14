@@ -1,6 +1,7 @@
-#include "turtle.h"
+#include <turtle.h>
 #include <windows.h>
 #include <math.h>
+#include <stdbool.h>
 
 #define MAX_CMDS 50
 
@@ -11,26 +12,37 @@ typedef struct {
     void *params;
 } Command;
 
+typedef struct {
+    cmdFunction cmd;
+    void *params;
+} CommandEx;
+
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 static void CreateCanvas(void);
 static void cleanup(void);
+static void PostCommand(cmdFunction cmd, void *params, bool isEx);
+static void HandleExCommands(void);
 static void ExecuteCommands(void);
-static void PostCommand(cmdFunction cmd, void *params);
+static void __polygon(void *params);
+static void __move(void *params);
 static void __forward(void *params);
 static void __left(void *params);
-static void __setAngle(void *params);
+static void __setheading(void *params);
 static void __setpos(void *params);
 static void __circle(void *params);
-static void __rectangle(void *params);
 static void __color(void *params);
 
 typedef struct {
     HWND hwnd;
     HDC hdc;
     double angle;
+    COLORREF color;
     Command *cmdQueue;
     int nCmd;
     int maxCmd;
+    CommandEx *cmdQueueEx;
+    int nCmdEx;
+    int maxCmdEx;
 } Turtle;
 
 static Turtle *t = NULL;
@@ -40,9 +52,13 @@ void init(void)
     t = malloc(sizeof (Turtle));
     if (t)
     {
-        t->nCmd = 0;
         t->maxCmd = MAX_CMDS;
         t->cmdQueue = malloc(t->maxCmd * sizeof (Command));
+        t->nCmd = 0;
+
+        t->maxCmdEx = MAX_CMDS;
+        t->cmdQueueEx = malloc(t->maxCmdEx * sizeof (CommandEx));
+        t->nCmdEx = 1; // 0 is reserved
     }
 }
 
@@ -98,6 +114,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
             t->hdc = BeginPaint(t->hwnd, &ps);
 
             MoveToEx(t->hdc, xClient / 2, yClient / 2, NULL);
+            t->color = RGB(0, 0, 0);
             ExecuteCommands();
 
             EndPaint(t->hwnd, &ps);
@@ -124,28 +141,56 @@ static void cleanup(void)
 {
     for (int i = 0; i < t->nCmd; i++)
         free(t->cmdQueue[i].params);
+ 
+    for (int i = 0; i < t->nCmdEx; i++)
+        free(t->cmdQueueEx[i].params);
 
     free(t->cmdQueue);
+    free(t->cmdQueueEx);
     free(t);
 }
 
-static void PostCommand(cmdFunction cmd, void *params)
+static void PostCommand(cmdFunction cmd, void *params, bool isEx)
 {
-    if (!t || !t->cmdQueue)
+    if (!t || !t->cmdQueue || !t->cmdQueueEx)
        return;
 
-    if (t->nCmd == t->maxCmd)
+    if (!isEx)
     {
-        t->maxCmd *= 2;
-        Command *cmdQueue = realloc(t->cmdQueue, t->maxCmd * sizeof (Command));
-        if (cmdQueue)
-            t->cmdQueue = cmdQueue;
+        if (t->nCmd == t->maxCmd)
+        {
+            t->maxCmd *= 2;
+            Command *cmdQueue = realloc(t->cmdQueue, t->maxCmd * sizeof (Command));
+            if (cmdQueue)
+                t->cmdQueue = cmdQueue;
+        }
+    
+        Command command = {cmd, params};
+        t->cmdQueue[t->nCmd] = command;
+        t->nCmd++;
     }
-
-    Command command = {cmd, params};
-    t->cmdQueue[t->nCmd] = command;
-    t->nCmd++;
+    else
+    {
+        if (t->nCmdEx == t->maxCmdEx)
+        {
+            t->maxCmdEx *= 2;
+            CommandEx *cmdQueue = realloc(t->cmdQueueEx, t->maxCmdEx * sizeof (CommandEx));
+            if (cmdQueue)
+                t->cmdQueueEx = cmdQueue;
+        }
+    
+        CommandEx command = {cmd, params};
+        t->cmdQueueEx[t->nCmdEx] = command;
+        t->nCmdEx++;
+    }
 }
+
+typedef struct
+{ 
+    POINT dest;
+    COLORREF color;
+    bool isPenUp;
+} MoveParams;
 
 static void ExecuteCommands(void)
 {
@@ -155,6 +200,136 @@ static void ExecuteCommands(void)
          Command command = t->cmdQueue[i];
          command.cmd(command.params);
     }
+
+    RECT rect;
+    GetClientRect(t->hwnd, &rect);
+    MoveParams *moveParams = malloc(sizeof (MoveParams));
+    moveParams->dest.x = rect.right / 2, moveParams->dest.y = rect.bottom / 2;
+    moveParams->isPenUp = true;
+
+    t->cmdQueueEx[0].cmd = __move;
+    t->cmdQueueEx[0].params = moveParams;
+
+    HandleExCommands();
+
+    for (int i = 0; i < t->nCmdEx; i++)
+    {
+         CommandEx command = t->cmdQueueEx[i];
+         command.cmd(command.params);
+    }
+}
+
+typedef struct {
+   POINT *apt;
+   int count;
+   COLORREF color;
+   bool fill;
+} PolygonParams;
+
+static void HandleExCommands(void)
+{
+    CommandEx *cmdQueue = malloc(MAX_CMDS * sizeof (CommandEx));
+    int cmdQueueCount = 0;
+
+    for (int i = 0; i < t->nCmdEx;)
+    {
+        if (t->cmdQueueEx[i].cmd == __move)
+        {
+            bool repeated = false;
+            MoveParams *moveParams = (MoveParams *) t->cmdQueueEx[i].params;
+
+            for (int j = i + 1; j < t->nCmdEx; j++)
+            {   
+                if (t->cmdQueueEx[j].cmd != __move)
+                    break;
+
+                MoveParams *temp = (MoveParams *) t->cmdQueueEx[j].params;
+
+                if (temp->dest.x == moveParams->dest.x && temp->dest.y == moveParams->dest.y)
+                {
+                    repeated = true;
+                    /* for (int k = i; k <= j; k++)
+                    {
+                        cmdQueue[cmdQueueCount]= t->cmdQueueEx[k];
+                        cmdQueueCount++;
+                    } */
+
+                    PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
+                    polygonParams->count = j - i + 1;
+                    polygonParams->apt = malloc(polygonParams->count * sizeof (POINT));
+
+                    //   ---   free apt !!----
+
+                    polygonParams->fill = true;
+
+                    for (int k = i; k <= j; k++)
+                    {
+                        MoveParams *temp = (MoveParams *) t->cmdQueueEx[k].params;
+                        polygonParams->apt[k - i] = temp->dest;
+                        polygonParams->color = temp->color; // the color of is the clr of the last line
+                    }
+
+                    cmdQueue[cmdQueueCount].cmd = __polygon;
+                    cmdQueue[cmdQueueCount].params = polygonParams;
+                    cmdQueueCount++;
+                    
+                    i = j;
+                    break;                    
+                }
+            }
+
+            if (!repeated)
+            {
+                cmdQueue[cmdQueueCount] = t->cmdQueueEx[i];
+                cmdQueueCount++;
+                i++;
+            }    
+        }
+        else
+        {
+            cmdQueue[cmdQueueCount] = t->cmdQueueEx[i];
+            cmdQueueCount++;
+            i++;
+        }
+    }
+
+    t->cmdQueueEx = cmdQueue;
+    t->nCmdEx = cmdQueueCount;
+}
+
+static void __polygon(void *params)
+{
+    PolygonParams *polygonParams = (PolygonParams *) params;
+
+    if (polygonParams->fill)
+    {
+       HPEN hPen = CreatePen(PS_SOLID, 1, polygonParams->color);
+       SelectObject(t->hdc, hPen);
+
+       HBRUSH hBrush = CreateSolidBrush(polygonParams->color);
+       SelectObject(t->hdc, hBrush);
+
+       // clean - up
+    }
+
+    Polygon(t->hdc, polygonParams->apt, polygonParams->count);
+}
+
+static void __move(void *params)
+{
+    MoveParams *moveParams = (MoveParams *) params;
+
+    if (moveParams->isPenUp)
+        SelectObject(t->hdc, GetStockObject(NULL_PEN));
+    else
+    {
+        HPEN hPen = CreatePen(PS_SOLID, 1, moveParams->color);
+        SelectObject(t->hdc, hPen);
+
+        // delete it
+    }
+
+    LineTo(t->hdc, moveParams->dest.x, moveParams->dest.y);
 }
  
 typedef struct
@@ -166,7 +341,7 @@ void forward(int distance)
 {
     ForwardParams *forwardParams = malloc(sizeof (ForwardParams));
     forwardParams->distance = distance;
-    PostCommand(__forward, forwardParams);
+    PostCommand(__forward, forwardParams, false);
 }
   
 static void __forward(void *params)
@@ -182,7 +357,14 @@ static void __forward(void *params)
     end.x = round(curPos.x + forwardParams->distance * cos(alpha));
     end.y = round(curPos.y - forwardParams->distance * sin(alpha)); // '-' because that y-axis increases downward
 
-    LineTo(t->hdc, end.x, end.y);
+    // LineTo(t->hdc, end.x, end.y);
+    MoveToEx(t->hdc, end.x, end.y, NULL);
+
+    MoveParams *moveParams = malloc(sizeof (MoveParams));
+    moveParams->dest.x = end.x, moveParams->dest.y = end.y;
+    moveParams->color = t->color;
+    moveParams->isPenUp = false;
+    PostCommand(__move, moveParams, true);
 }
 
 typedef struct 
@@ -194,14 +376,14 @@ void left(double angle)
 {
     LeftParams *leftParams = malloc(sizeof (LeftParams));
     leftParams->angle = angle;
-    PostCommand(__left, leftParams);
+    PostCommand(__left, leftParams, false);
 }
 
 void right(double angle)
 {   
     LeftParams *leftParams = malloc(sizeof (LeftParams));
     leftParams->angle = -angle;
-    PostCommand(__left, leftParams);
+    PostCommand(__left, leftParams, false);
 }
 
 static void __left(void *params)
@@ -210,14 +392,14 @@ static void __left(void *params)
     t->angle += leftParams->angle;
 }
 
-void setAngle(double angle)
+void setheading(double angle)
 {
     LeftParams *leftParams = malloc(sizeof (LeftParams));
     leftParams->angle = angle;
-    PostCommand(__setAngle, leftParams);
+    PostCommand(__setheading, leftParams, false);
 }
 
-static void __setAngle(void *params)
+static void __setheading(void *params)
 {
     LeftParams *leftParams = (LeftParams *) params;
     t->angle = leftParams->angle;
@@ -232,7 +414,7 @@ void setpos(int x, int y)
 {
     SetposParams *setposParams = malloc(sizeof (SetposParams));
     setposParams->x = x, setposParams->y = y;
-    PostCommand(__setpos, setposParams);
+    PostCommand(__setpos, setposParams, false);
 }
 
 static void __setpos(void *params)
@@ -244,19 +426,28 @@ static void __setpos(void *params)
     POINT newPos;
     newPos.x = rect.right / 2 + setposParams->x;
     newPos.y = rect.bottom / 2 - setposParams->y; // '-' because that y-axis increases downward
+
     MoveToEx(t->hdc, newPos.x, newPos.y, NULL);
+
+    MoveParams *moveParams = malloc(sizeof (MoveParams));
+    moveParams->dest.x = newPos.x, moveParams->dest.y = newPos.y;
+    moveParams->isPenUp = true;
+    PostCommand(__move, moveParams, true);
 }
+
 
 typedef struct
 {
     int r;
+    COLORREF color;
 } CircleParams;
 
 void circle(int r)
 {
     CircleParams *circleParams = malloc(sizeof (CircleParams));
     circleParams->r = r;
-    PostCommand(__circle, circleParams);
+    circleParams->color = t->color;
+    PostCommand(__circle, circleParams, false);
 }
 
 static void __circle(void *params)
@@ -272,35 +463,15 @@ static void __circle(void *params)
     rect.right = curPos.x + circleParams->r;
     rect.bottom = curPos.y + circleParams->r;
 
+    HPEN hPen = CreatePen(PS_SOLID, 1, circleParams->color);
+    SelectObject(t->hdc, hPen);
+
+    HBRUSH hBrush = CreateSolidBrush(circleParams->color);
+    SelectObject(t->hdc, hBrush);
+
     Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
-}
 
-typedef struct {
-    int length, width;
-} RectangleParams;
-
-void rectangle(int length, int width)
-{
-    RectangleParams *rectangleParams = malloc(sizeof (RectangleParams));
-    rectangleParams->length = length;
-    rectangleParams->width = width;
-    PostCommand(__rectangle, rectangleParams);
-}
-
-static void __rectangle(void *params)
-{
-    RectangleParams *rectangleParams = (RectangleParams *) params;
-
-    POINT curPos;
-    GetCurrentPositionEx(t->hdc, &curPos);
-
-    RECT rect;
-    rect.left = curPos.x;
-    rect.top = curPos.y - rectangleParams->width;
-    rect.right = curPos.x + rectangleParams->length;
-    rect.bottom = curPos.y;
-
-    Rectangle(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
+    // clean-up
 }
 
 typedef struct
@@ -312,7 +483,7 @@ void color(const char *szColor)
 {
      ColorParams *colorParams = malloc(sizeof (ColorParams));
      colorParams->szColor = szColor;
-     PostCommand(__color, colorParams);
+     PostCommand(__color, colorParams, false);
 }
 
 static void __color(void *params)
@@ -324,7 +495,7 @@ static void __color(void *params)
     COLORREF color; 
     if (!strncmp(colorParams->szColor, "white", 5))
         color = RGB(255, 255, 255);
-    else if (!strncmp(colorParams->szColor, "black", 5))
+    else if (!strncmp(colorParams->szColo r, "black", 5))
         color = RGB(0, 0, 0);
     else if (!strncmp(colorParams->szColor, "red", 3))
         color = RGB(255, 0, 0);
@@ -337,11 +508,13 @@ static void __color(void *params)
     else
         return;
 
-    HPEN hPen = CreatePen(PS_SOLID, 1, color);
+    /* HPEN hPen = CreatePen(PS_SOLID, 1, color);
     SelectObject(t->hdc, hPen);
 
     HBRUSH hBrush = CreateSolidBrush(color);
-    SelectObject(t->hdc, hBrush);
+    SelectObject(t->hdc, hBrush); 
 
-    // delete it
+    // delete it */
+
+    t->color = color;
 }
