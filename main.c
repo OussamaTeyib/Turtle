@@ -4,7 +4,10 @@ int main(void)
 {
     init();
     color("green");
-    circle(50);
+    forward(100);
+    left(90);
+    forward(50);
+ 
     
     show();
     return 0;    
