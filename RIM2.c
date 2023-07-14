@@ -5,21 +5,29 @@ int main(void)
     init();
     goto(-150, -100);
     color("red");
-    rectangle(300, 200);
+    for (int i = 0; i < 4; i++)
+    {
+        forward(300 - 100 * (i % 2));
+        left(90);
+    }
 
     goto(-150, -70);
     color("green");
-    rectangle(300, 140);
+    for (int i = 0; i < 4; i++)
+    {
+        forward(300 - 160 * (i % 2));
+        left(90);
+    }
 
-    goto(0, -10);
+    /* goto(0, -10);
     color("yellow");
     circle(50);
 
     goto(0, 5);
-    color("green");
-    circle(50);
+    color("white");
+    circle(50); */
 
-    goto(20, -5);
+    goto(18, -5);
     left(108);
     color("yellow");
     for (int i = 0; i < 5; i++)
