@@ -1,7 +1,6 @@
 #include <turtle.h>
 #include <windows.h>
 #include <math.h>
-#include <stdio.h> // remove it
 #include <stdbool.h>
 
 #define MAX_CMDS 50
@@ -20,13 +19,17 @@ static void PostCommand(cmdFunction cmd, void *params);
 static void ExecuteCommands(void);
 static void __move(void *params);
 static void __circle(void *params);
+static COLORREF GetColor(const char *szColor);
 
 typedef struct {
     HWND hwnd;
     HDC hdc;
     POINT pos;
     double angle;
-    COLORREF color;
+    COLORREF pencolor;
+    COLORREF fillcolor;
+    bool isPenUp;
+    bool fill;
     Command *cmdQueue;
     int nCmd;
     int maxCmd;
@@ -45,7 +48,10 @@ void init(void)
 
         t->pos.x = 0, t->pos.y = 0;
         t->angle = 0.0;
-        t->color = RGB(0, 0, 0);
+        t->pencolor = RGB(0, 0, 0);
+        t->fillcolor = RGB(0, 0, 0);
+        t->isPenUp = false;
+        t->fill = false;
 
         // add 'move to (0, 0)' to the cmdQueue
     }
@@ -92,6 +98,9 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
 
             hInstance = GetModuleHandle(NULL);
             GetClassName(t->hwnd, ClassName, 100);
+            
+            // process commands
+
             return 0;
 
         case WM_SIZE:
@@ -154,8 +163,6 @@ static void PostCommand(cmdFunction cmd, void *params)
 
 static void ExecuteCommands(void)
 {
-    // handle commands
-
     for (int i = 0; i < t->nCmd; i++)
     {
          Command command = t->cmdQueue[i];
@@ -166,8 +173,10 @@ static void ExecuteCommands(void)
 typedef struct
 { 
     POINT dest;
-    COLORREF color;
+    COLORREF pencolor;
+    COLORREF fillcolor;
     bool isPenUp;
+    bool fill;
 } MoveParams;
 
 static void __move(void *params)
@@ -180,7 +189,7 @@ static void __move(void *params)
     }
     else
     {
-        HPEN hPen = CreatePen(PS_SOLID, 1, moveParams->color);
+        HPEN hPen = CreatePen(PS_SOLID, 1, moveParams->pencolor);
         SelectObject(t->hdc, hPen);
 
         // delete it
@@ -207,8 +216,10 @@ void forward(int distance)
     moveParams->dest.x = round(t->pos.x + distance * cos(alpha));
     moveParams->dest.y = round(t->pos.y + distance * sin(alpha));
 
-    moveParams->color = t->color;
-    moveParams->isPenUp = false; // to be changed
+    moveParams->pencolor = t->pencolor;
+    moveParams->fillcolor = t->fillcolor;
+    moveParams->isPenUp = t->isPenUp;
+    moveParams->fill = t->fill;
     
     PostCommand(__move, moveParams);
 
@@ -251,8 +262,10 @@ void setpos(int x, int y)
     moveParams->dest.x = x;
     moveParams->dest.y = y;
 
-    moveParams->color = t->color;
-    moveParams->isPenUp = true; // to be changed
+    moveParams->pencolor = t->pencolor;
+    moveParams->fillcolor = t->fillcolor;
+    moveParams->isPenUp = t->isPenUp;
+    moveParams->fill = t->fill;
     
     PostCommand(__move, moveParams);
 
@@ -261,35 +274,117 @@ void setpos(int x, int y)
     t->pos.y = moveParams->dest.y;
 }
 
+
+static COLORREF GetColor(const char *szColor)
+{
+    // handle all chars cases
+ 
+    if (!strncmp(szColor, "white", 5))
+        return RGB(255, 255, 255);
+    else if (!strncmp(szColor, "black", 5))
+        return RGB(0, 0, 0);
+    else if (!strncmp(szColor, "red", 3))
+        return RGB(255, 0, 0);
+    else if (!strncmp(szColor, "green", 5))
+        return RGB(0, 255, 0);
+    else if (!strncmp(szColor, "blue", 4))
+        return RGB(0, 0, 255);
+    else if (!strncmp(szColor, "yellow", 6))
+        return RGB(255, 255, 0);
+    else
+        return -1;
+}
+
 void color(const char *szColor)
 {
     if (!t || !t->cmdQueue)
        return;
 
-    // handle all chars cases
+    if (!szColor)
+       return;
 
-    COLORREF color; 
-    if (!strncmp(szColor, "white", 5))
-        color = RGB(255, 255, 255);
-    else if (!strncmp(szColor, "black", 5))
-        color = RGB(0, 0, 0);
-    else if (!strncmp(szColor, "red", 3))
-        color = RGB(255, 0, 0);
-    else if (!strncmp(szColor, "green", 5))
-        color = RGB(0, 255, 0);
-    else if (!strncmp(szColor, "blue", 4))
-        color = RGB(0, 0, 255);
-    else if (!strncmp(szColor, "yellow", 6))
-        color = RGB(255, 255, 0);
+    COLORREF color;
+    if ((color = GetColor(szColor)) != (COLORREF) -1)
+    {
+        t->pencolor = color;
+        t->fillcolor = color;
+    }
     else
         return;
+}
 
-    t->color = color;
+void pencolor(const char *szColor)
+{
+    if (!t || !t->cmdQueue)
+       return;
+
+    if (!szColor)
+       return;
+
+    COLORREF color;
+    if ((color = GetColor(szColor)) != (COLORREF) -1)
+    {
+        t->pencolor = color;
+    }
+    else
+        return;
+}
+
+void fillcolor(const char *szColor)
+{
+    if (!t || !t->cmdQueue)
+       return;
+
+    if (!szColor)
+       return;
+
+    COLORREF color;
+    if ((color = GetColor(szColor)) != (COLORREF) -1)
+    {
+        t->fillcolor = color;
+    }
+    else
+        return;
+}
+
+void penup(void)
+{
+    if (!t || !t->cmdQueue)
+        return;
+
+     t->isPenUp = true;
+}
+
+void pendown(void)
+{
+    if (!t || !t->cmdQueue)
+        return;
+
+     t->isPenUp = false;
+}
+
+void begin_fill(void)
+{
+    if (!t || !t->cmdQueue)
+        return;
+
+     t->fill = true;
+}
+
+void end_fill(void)
+{
+    if (!t || !t->cmdQueue)
+        return;
+
+     t->fill = false;
 }
 
 typedef struct {
     int r;
-    COLORREF color;
+    COLORREF pencolor;
+    COLORREF fillcolor;
+    bool isPenUp;
+    bool fill;
 } CircleParams;
 
 void circle(int r)
@@ -299,7 +394,10 @@ void circle(int r)
 
     CircleParams *circleParams = malloc(sizeof (CircleParams));
     circleParams->r = r;
-    circleParams->color = t->color;
+    circleParams->pencolor = t->pencolor;
+    circleParams->fillcolor = t->fillcolor;
+    circleParams->isPenUp = t->isPenUp;
+    circleParams->fill = t->fill;
 
     PostCommand(__circle, circleParams);
 }
@@ -317,11 +415,26 @@ static void __circle(void *params)
     rect.right = curPos.x + circleParams->r;
     rect.bottom = curPos.y + circleParams->r;
 
-    HPEN hPen = CreatePen(PS_SOLID, 1, circleParams->color);
-    SelectObject(t->hdc, hPen);
 
-    HBRUSH hBrush = CreateSolidBrush(circleParams->color);
-    SelectObject(t->hdc, hBrush);
+    if (circleParams->isPenUp)
+    {
+        SelectObject(t->hdc, GetStockObject(NULL_PEN));
+    }
+    else
+    {
+        HPEN hPen = CreatePen(PS_SOLID, 1, circleParams->pencolor);
+        SelectObject(t->hdc, hPen);
+    }
+
+    if (circleParams->fill)
+    {
+        HBRUSH hBrush = CreateSolidBrush(circleParams->fillcolor);
+        SelectObject(t->hdc, hBrush);
+    }
+    else
+    {
+        SelectObject(t->hdc, GetStockObject(NULL_BRUSH));
+    }
 
     Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
 

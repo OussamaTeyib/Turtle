@@ -9,11 +9,22 @@ void right(double angle);
 void setheading(double angle);
 void setpos(int x, int y);
 void circle(int r);
+void penup(void);
+void pendown(void);
+void begin_fill(void);
+void end_fill(void);
 void color(const char *color);
-void rectangle(int length, int width);
+void pencolor(const char *color);
+void fillcolor(const char *color);
 
 #define fd(distance) forward((distance))
 #define goto(x, y) setpos((x), (y))
+#define setposition(x, y) setpos((x), (y))
+#define seth(angle) setheading((angle))
+#define up() penup()
+#define pu() penup()
+#define down() pendown()
+#define pd() pendown()
 
 
 
