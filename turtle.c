@@ -16,8 +16,10 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
 static void CreateCanvas(void);
 static void cleanup(void);
 static void PostCommand(cmdFunction cmd, void *params);
+static void LinesToPolygon(void);
 static void ExecuteCommands(void);
 static void __move(void *params);
+static void __polygon(void *params);
 static void __circle(void *params);
 static COLORREF GetColor(const char *szColor);
 
@@ -35,6 +37,31 @@ typedef struct {
     int maxCmd;
 } Turtle;
 
+typedef struct
+{ 
+    POINT dest;
+    COLORREF pencolor;
+    COLORREF fillcolor;
+    bool pendown;
+    bool fill;
+} MoveParams;
+
+typedef struct
+{ 
+    POINT *apt;
+    int count;
+    COLORREF fillcolor;
+    bool fill;
+} PolygonParams;
+
+typedef struct {
+    int r;
+    COLORREF pencolor;
+    COLORREF fillcolor;
+    bool pendown;
+    bool fill;
+} CircleParams;
+
 static Turtle *t = NULL;
 
 void init(void)
@@ -50,7 +77,7 @@ void init(void)
         t->angle = 0.0;
         t->pencolor = RGB(0, 0, 0);
         t->fillcolor = RGB(0, 0, 0);
-        t->pendown = false;
+        t->pendown = true;
         t->fill = false;
 
         // add 'move to (0, 0)' to the cmdQueue
@@ -108,7 +135,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
             hInstance = GetModuleHandle(NULL);
             GetClassName(t->hwnd, ClassName, 100);
             
-            // process commands
+            LinesToPolygon();
 
             return 0;
 
@@ -145,6 +172,8 @@ void show(void)
 
 static void cleanup(void)
 {
+    // free polygon apt
+
     for (int i = 0; i < t->nCmd; i++)
         free(t->cmdQueue[i].params);
 
@@ -170,6 +199,61 @@ static void PostCommand(cmdFunction cmd, void *params)
     t->nCmd++;
 }
 
+static void LinesToPolygon(void)
+{
+    Command *cmdQueue = malloc(t->maxCmd * sizeof (Command)); // to be changed
+    int count = 0;
+
+    for (int i = 0; i < t->nCmd; )
+    {
+         cmdQueue[count++] = t->cmdQueue[i];
+
+         if (t->cmdQueue[i].cmd == __move)
+         {
+             MoveParams *curPt = (MoveParams *) t->cmdQueue[i].params;
+             for (int j = i + 1; j < t->nCmd; j++)
+             {
+                  cmdQueue[count++] = t->cmdQueue[j];
+
+                  if (t->cmdQueue[j].cmd != __move)
+                      continue;
+
+                  MoveParams *pt = (MoveParams *) t->cmdQueue[j].params;
+                  if (curPt->dest.x == pt->dest.x && curPt->dest.y == pt->dest.y)
+                  {
+                      PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
+                      polygonParams->count = j - i + 1;
+                      polygonParams->apt = malloc(polygonParams->count * sizeof (POINT));
+
+                      for (int k = i; k <= j; k++)
+                      {
+                          if (t->cmdQueue[k].cmd != __move)
+                              continue;
+
+                          MoveParams *temp = (MoveParams *) t->cmdQueue[k].params;
+
+                          polygonParams->apt[k - i] = temp->dest;
+                          polygonParams->fill = temp->fill;
+                          polygonParams->fillcolor = temp->fillcolor;
+                      }
+                      
+                      cmdQueue[count].cmd = __polygon;
+                      cmdQueue[count].params = polygonParams;
+                      count++;
+
+                      i += j;
+                      break;
+                  }
+             }
+         }
+         else
+            i++;
+    }
+
+    t->cmdQueue = cmdQueue;
+    t->nCmd = count;
+}
+
 static void ExecuteCommands(void)
 {
     for (int i = 0; i < t->nCmd; i++)
@@ -178,15 +262,6 @@ static void ExecuteCommands(void)
          command.cmd(command.params);
     }
 }
-
-typedef struct
-{ 
-    POINT dest;
-    COLORREF pencolor;
-    COLORREF fillcolor;
-    bool pendown;
-    bool fill;
-} MoveParams;
 
 static void __move(void *params)
 {
@@ -210,6 +285,24 @@ static void __move(void *params)
 
     if (moveParams->pendown)
         DeleteObject(hPen);
+}
+
+static void __polygon(void *params)
+{
+    PolygonParams *polygonParams = (PolygonParams *) params;
+
+    HBRUSH hBrush;
+    if (polygonParams->fill)
+        hBrush = CreateSolidBrush(polygonParams->fillcolor);
+    else
+        hBrush = GetStockObject(NULL_BRUSH);   
+
+    SelectObject(t->hdc, hBrush);
+
+    Polygon(t->hdc, polygonParams->apt, polygonParams->count);
+
+    if (polygonParams->fill)
+        DeleteObject(hBrush);
 }
 
 void forward(int distance)
@@ -383,14 +476,6 @@ void end_fill(void)
 
      t->fill = false;
 }
-
-typedef struct {
-    int r;
-    COLORREF pencolor;
-    COLORREF fillcolor;
-    bool pendown;
-    bool fill;
-} CircleParams;
 
 void circle(int r)
 {
