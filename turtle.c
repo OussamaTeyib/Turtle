@@ -241,10 +241,12 @@ static void LinesToPolygon(void)
                       cmdQueue[count].params = polygonParams;
                       count++;
 
-                      i += j;
+                      i += j - 1;
                       break;
                   }
+                  
              }
+             i++;
          }
          else
             i++;
@@ -299,7 +301,17 @@ static void __polygon(void *params)
 
     SelectObject(t->hdc, hBrush);
 
-    Polygon(t->hdc, polygonParams->apt, polygonParams->count);
+    RECT rect;
+    GetClientRect(t->hwnd, &rect);
+   
+    POINT apt[polygonParams->count];
+    for (int i = 0; i < polygonParams->count; i++)
+    {
+        apt[i].x = rect.right / 2 + polygonParams->apt[i].x;
+        apt[i].y = rect.bottom / 2 - polygonParams->apt[i].y; 
+    }
+
+    Polygon(t->hdc, apt, polygonParams->count);
 
     if (polygonParams->fill)
         DeleteObject(hBrush);
