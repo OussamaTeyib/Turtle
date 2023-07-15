@@ -222,7 +222,6 @@ void forward(int distance)
     
     PostCommand(__move, moveParams);
 
-    // update the status of the turte
     t->pos.x = moveParams->dest.x;
     t->pos.y = moveParams->dest.y;
 }
@@ -268,7 +267,6 @@ void setpos(int x, int y)
     
     PostCommand(__move, moveParams);
 
-    // update the state of the turte
     t->pos.x = moveParams->dest.x;
     t->pos.y = moveParams->dest.y;
 }
