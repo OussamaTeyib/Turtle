@@ -20,7 +20,7 @@ int main(void)
     end_fill();
 
     up();
-    goto(0, 0);
+    home();
     down();
     color("yellow");
     left(36);

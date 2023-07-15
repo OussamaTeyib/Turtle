@@ -8,6 +8,7 @@ void left(double angle);
 void right(double angle);
 void setheading(double angle);
 void setpos(int x, int y);
+void home(void);
 void circle(int r);
 void penup(void);
 void pendown(void);
