@@ -28,7 +28,7 @@ typedef struct {
     double angle;
     COLORREF pencolor;
     COLORREF fillcolor;
-    bool isPenUp;
+    bool pendown;
     bool fill;
     Command *cmdQueue;
     int nCmd;
@@ -50,7 +50,7 @@ void init(void)
         t->angle = 0.0;
         t->pencolor = RGB(0, 0, 0);
         t->fillcolor = RGB(0, 0, 0);
-        t->isPenUp = false;
+        t->pendown = false;
         t->fill = false;
 
         // add 'move to (0, 0)' to the cmdQueue
@@ -184,7 +184,7 @@ typedef struct
     POINT dest;
     COLORREF pencolor;
     COLORREF fillcolor;
-    bool isPenUp;
+    bool pendown;
     bool fill;
 } MoveParams;
 
@@ -193,10 +193,10 @@ static void __move(void *params)
     MoveParams *moveParams = (MoveParams *) params;
 
     HPEN hPen;
-    if (moveParams->isPenUp)
-        hPen = GetStockObject(NULL_PEN);
-    else
+    if (moveParams->pendown)
         hPen = CreatePen(PS_SOLID, 1, moveParams->pencolor);
+    else
+        hPen = GetStockObject(NULL_PEN);   
 
     SelectObject(t->hdc, hPen);
 
@@ -208,7 +208,7 @@ static void __move(void *params)
 
     LineTo(t->hdc, dest.x, dest.y);
 
-    if (!moveParams->isPenUp)
+    if (moveParams->pendown)
         DeleteObject(hPen);
 }
 
@@ -226,7 +226,7 @@ void forward(int distance)
 
     moveParams->pencolor = t->pencolor;
     moveParams->fillcolor = t->fillcolor;
-    moveParams->isPenUp = t->isPenUp;
+    moveParams->pendown = t->pendown;
     moveParams->fill = t->fill;
     
     PostCommand(__move, moveParams);
@@ -271,7 +271,7 @@ void setpos(int x, int y)
 
     moveParams->pencolor = t->pencolor;
     moveParams->fillcolor = t->fillcolor;
-    moveParams->isPenUp = t->isPenUp;
+    moveParams->pendown = t->pendown;
     moveParams->fill = t->fill;
     
     PostCommand(__move, moveParams);
@@ -280,6 +280,14 @@ void setpos(int x, int y)
     t->pos.y = moveParams->dest.y;
 }
 
+void home(void)
+{
+    if (!t || !t->cmdQueue)
+       return;
+
+    setpos(0, 0);
+    setheading(0.0);
+}
 
 static COLORREF GetColor(const char *szColor)
 {
@@ -349,7 +357,7 @@ void penup(void)
     if (!t || !t->cmdQueue)
         return;
 
-     t->isPenUp = true;
+     t->pendown = false;
 }
 
 void pendown(void)
@@ -357,7 +365,7 @@ void pendown(void)
     if (!t || !t->cmdQueue)
         return;
 
-     t->isPenUp = false;
+     t->pendown= true;
 }
 
 void begin_fill(void)
@@ -380,7 +388,7 @@ typedef struct {
     int r;
     COLORREF pencolor;
     COLORREF fillcolor;
-    bool isPenUp;
+    bool pendown;
     bool fill;
 } CircleParams;
 
@@ -393,7 +401,7 @@ void circle(int r)
     circleParams->r = r;
     circleParams->pencolor = t->pencolor;
     circleParams->fillcolor = t->fillcolor;
-    circleParams->isPenUp = t->isPenUp;
+    circleParams->pendown = t->pendown;
     circleParams->fill = t->fill;
 
     PostCommand(__circle, circleParams);
@@ -413,10 +421,11 @@ static void __circle(void *params)
     rect.bottom = curPos.y + circleParams->r;
 
     HPEN hPen;
-    if (circleParams->isPenUp)
-        hPen = GetStockObject(NULL_PEN);
-    else
+    if (circleParams->pendown)
         hPen = CreatePen(PS_SOLID, 1, circleParams->pencolor);
+    else
+        hPen = GetStockObject(NULL_PEN);
+        
 
     HBRUSH hBrush;
     if (circleParams->fill)
@@ -429,7 +438,7 @@ static void __circle(void *params)
 
     Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
 
-    if (!circleParams->isPenUp)
+    if (circleParams->pendown)
         DeleteObject(hPen);
     if (circleParams->fill)
         DeleteObject(hBrush);
