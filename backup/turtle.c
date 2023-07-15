@@ -72,7 +72,16 @@ static void CreateCanvas(void)
 
     RegisterClass(&wc);
 
-    HWND hwnd = CreateWindow(className, "Turtle in C", WS_OVERLAPPEDWINDOW, 250, 100, 820, 470, NULL, NULL, hInstance, NULL);
+    int xScreen = GetSystemMetrics(SM_CXSCREEN);
+    int yScreen = GetSystemMetrics(SM_CYSCREEN);
+
+    RECT window;
+    window.left = xScreen / 4;
+    window.right = xScreen / 2;
+    window.top = yScreen / 8;
+    window.bottom = 6 * yScreen / 8;
+
+    HWND hwnd = CreateWindow(className, "C Turtle Graphics", WS_OVERLAPPEDWINDOW, window.left, window.top, window.right, window.bottom, NULL, NULL, hInstance, NULL);
 
     ShowWindow(hwnd, SW_SHOWDEFAULT);
     UpdateWindow(hwnd);
@@ -183,17 +192,13 @@ static void __move(void *params)
 {
     MoveParams *moveParams = (MoveParams *) params;
 
+    HPEN hPen;
     if (moveParams->isPenUp)
-    {
-        SelectObject(t->hdc, GetStockObject(NULL_PEN));
-    }
+        hPen = GetStockObject(NULL_PEN);
     else
-    {
-        HPEN hPen = CreatePen(PS_SOLID, 1, moveParams->pencolor);
-        SelectObject(t->hdc, hPen);
+        hPen = CreatePen(PS_SOLID, 1, moveParams->pencolor);
 
-        // delete it
-    }
+    SelectObject(t->hdc, hPen);
 
     POINT dest;
     RECT rect;
@@ -202,6 +207,9 @@ static void __move(void *params)
     dest.y = rect.bottom / 2 - moveParams->dest.y; // '-' because that y-axis increases downward
 
     LineTo(t->hdc, dest.x, dest.y);
+
+    if (!moveParams->isPenUp)
+        DeleteObject(hPen);
 }
 
 void forward(int distance)
@@ -223,7 +231,6 @@ void forward(int distance)
     
     PostCommand(__move, moveParams);
 
-    // update the status of the turte
     t->pos.x = moveParams->dest.x;
     t->pos.y = moveParams->dest.y;
 }
@@ -269,7 +276,6 @@ void setpos(int x, int y)
     
     PostCommand(__move, moveParams);
 
-    // update the status of the turte
     t->pos.x = moveParams->dest.x;
     t->pos.y = moveParams->dest.y;
 }
@@ -297,10 +303,7 @@ static COLORREF GetColor(const char *szColor)
 
 void color(const char *szColor)
 {
-    if (!t || !t->cmdQueue)
-       return;
-
-    if (!szColor)
+    if (!t || !t->cmdQueue || !szColor)
        return;
 
     COLORREF color;
@@ -315,10 +318,7 @@ void color(const char *szColor)
 
 void pencolor(const char *szColor)
 {
-    if (!t || !t->cmdQueue)
-       return;
-
-    if (!szColor)
+    if (!t || !t->cmdQueue || !szColor)
        return;
 
     COLORREF color;
@@ -332,10 +332,7 @@ void pencolor(const char *szColor)
 
 void fillcolor(const char *szColor)
 {
-    if (!t || !t->cmdQueue)
-       return;
-
-    if (!szColor)
+    if (!t || !t->cmdQueue || !szColor)
        return;
 
     COLORREF color;
@@ -415,28 +412,25 @@ static void __circle(void *params)
     rect.right = curPos.x + circleParams->r;
     rect.bottom = curPos.y + circleParams->r;
 
-
+    HPEN hPen;
     if (circleParams->isPenUp)
-    {
-        SelectObject(t->hdc, GetStockObject(NULL_PEN));
-    }
+        hPen = GetStockObject(NULL_PEN);
     else
-    {
-        HPEN hPen = CreatePen(PS_SOLID, 1, circleParams->pencolor);
-        SelectObject(t->hdc, hPen);
-    }
+        hPen = CreatePen(PS_SOLID, 1, circleParams->pencolor);
 
+    HBRUSH hBrush;
     if (circleParams->fill)
-    {
-        HBRUSH hBrush = CreateSolidBrush(circleParams->fillcolor);
-        SelectObject(t->hdc, hBrush);
-    }
+        hBrush = CreateSolidBrush(circleParams->fillcolor);
     else
-    {
-        SelectObject(t->hdc, GetStockObject(NULL_BRUSH));
-    }
+        hBrush = GetStockObject(NULL_BRUSH);
+
+    SelectObject(t->hdc, hPen);
+    SelectObject(t->hdc, hBrush);
 
     Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
 
-    // clean-up
+    if (!circleParams->isPenUp)
+        DeleteObject(hPen);
+    if (circleParams->fill)
+        DeleteObject(hBrush);
 }

@@ -72,7 +72,16 @@ static void CreateCanvas(void)
 
     RegisterClass(&wc);
 
-    HWND hwnd = CreateWindow(className, "Turtle in C", WS_OVERLAPPEDWINDOW, 250, 100, 820, 470, NULL, NULL, hInstance, NULL);
+    int xScreen = GetSystemMetrics(SM_CXSCREEN);
+    int yScreen = GetSystemMetrics(SM_CYSCREEN);
+
+    RECT window;
+    window.left = xScreen / 4;
+    window.right = xScreen / 2;
+    window.top = yScreen / 8;
+    window.bottom = 6 * yScreen / 8;
+
+    HWND hwnd = CreateWindow(className, "C Turtle Graphics", WS_OVERLAPPEDWINDOW, window.left, window.top, window.right, window.bottom, NULL, NULL, hInstance, NULL);
 
     ShowWindow(hwnd, SW_SHOWDEFAULT);
     UpdateWindow(hwnd);
