@@ -294,10 +294,7 @@ static COLORREF GetColor(const char *szColor)
 
 void color(const char *szColor)
 {
-    if (!t || !t->cmdQueue)
-       return;
-
-    if (!szColor)
+    if (!t || !t->cmdQueue || !szColor)
        return;
 
     COLORREF color;
@@ -312,10 +309,7 @@ void color(const char *szColor)
 
 void pencolor(const char *szColor)
 {
-    if (!t || !t->cmdQueue)
-       return;
-
-    if (!szColor)
+    if (!t || !t->cmdQueue || !szColor)
        return;
 
     COLORREF color;
@@ -329,10 +323,7 @@ void pencolor(const char *szColor)
 
 void fillcolor(const char *szColor)
 {
-    if (!t || !t->cmdQueue)
-       return;
-
-    if (!szColor)
+    if (!t || !t->cmdQueue || !szColor)
        return;
 
     COLORREF color;
