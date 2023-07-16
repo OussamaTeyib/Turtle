@@ -211,65 +211,64 @@ static void LinesToPolygon(void)
 
     for (int i = 0; i < t->nCmd; )
     {
-         if (t->cmdQueue[i].cmd == __move)
-         {
-             MoveParams *curPt = (MoveParams *) t->cmdQueue[i].params;
+        if (t->cmdQueue[i].cmd == __move)
+        {
+            MoveParams *curPt = (MoveParams *) t->cmdQueue[i].params;
 
-             bool found = false;
+            bool found = false;
 
-             for (int j = i + 1; j < t->nCmd; j++)
-             {
-                 if (t->cmdQueue[j].cmd != __move)
-                      continue;
+            for (int j = i + 1; j < t->nCmd; j++)
+            {
+                if (t->cmdQueue[j].cmd != __move)
+                    continue;
 
-                 MoveParams *pt = (MoveParams *) t->cmdQueue[j].params;
-                  if (curPt->dest.x == pt->dest.x && curPt->dest.y == pt->dest.y)
-                 {
-                      PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
-                      polygonParams->count = j - i + 1;
-                      polygonParams->apt = malloc(polygonParams->count * sizeof (POINT));
+                MoveParams *pt = (MoveParams *) t->cmdQueue[j].params;
+                if (curPt->dest.x == pt->dest.x && curPt->dest.y == pt->dest.y)
+                {
+                    PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
+                    polygonParams->count = j - i + 1;
+                    polygonParams->apt = malloc(polygonParams->count * sizeof (POINT));
 
-                      for (int k = i; k <= j; k++)
-                      {
-                          if (t->cmdQueue[k].cmd != __move)
-                              continue;
+                    for (int k = i; k <= j; k++)
+                    {
+                        if (t->cmdQueue[k].cmd != __move)
+                            continue;
 
-                          MoveParams *temp = (MoveParams *) t->cmdQueue[k].params;
+                        MoveParams *temp = (MoveParams *) t->cmdQueue[k].params;
 
-                          polygonParams->apt[k - i] = temp->dest;
-                          polygonParams->fill = temp->fill;
-                          polygonParams->fillcolor = temp->fillcolor;
-                      }
+                        polygonParams->apt[k - i] = temp->dest;
+                        polygonParams->fill = temp->fill;
+                        polygonParams->fillcolor = temp->fillcolor;
+                    }
 
-                      found = true;
+                    found = true;
                       
-                      for (int k = i; k <= j; k++)
-                      {
-                          cmdQueue[count++] = t->cmdQueue[k];
-                      }
+                    for (int k = i; k <= j; k++)
+                    {
+                        cmdQueue[count++] = t->cmdQueue[k];
+                    }
 
-                      cmdQueue[count].cmd = __polygon;
-                      cmdQueue[count].params = polygonParams;
-                      count++;
+                    cmdQueue[count].cmd = __polygon;
+                    cmdQueue[count].params = polygonParams;
+                    count++;
                      
-                      i = j;
-                      break;
-                  }
-             }
+                    i = j;
+                    break;
+                }
+            }
 
-             if (!found)
-             {
-                  // check if repaeted
-                  cmdQueue[count++] = t->cmdQueue[i];
-                  i++;
-             }
-             
-         }
-         else
-         {
-             cmdQueue[count++] = t->cmdQueue[i];
-             i++;
-         }
+            if (!found)
+            {
+                // check if repaeted
+                cmdQueue[count++] = t->cmdQueue[i];
+                i++;
+            }             
+        }
+        else
+        {
+            cmdQueue[count++] = t->cmdQueue[i];
+            i++;
+        }
     
     }
 
