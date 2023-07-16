@@ -172,10 +172,15 @@ void show(void)
 
 static void cleanup(void)
 {
-    // free polygon apt
-
     for (int i = 0; i < t->nCmd; i++)
+    {
+        if (t->cmdQueue[i].cmd == __polygon)
+        {
+            PolygonParams *polygonParams = (PolygonParams *) t->cmdQueue[i].params;
+            free(polygonParams->apt);
+        }
         free(t->cmdQueue[i].params);
+    }
 
     free(t->cmdQueue);
     free(t);
@@ -206,21 +211,20 @@ static void LinesToPolygon(void)
 
     for (int i = 0; i < t->nCmd; )
     {
-         cmdQueue[count++] = t->cmdQueue[i];
-
          if (t->cmdQueue[i].cmd == __move)
          {
              MoveParams *curPt = (MoveParams *) t->cmdQueue[i].params;
+
+             bool found = false;
+
              for (int j = i + 1; j < t->nCmd; j++)
              {
-                  cmdQueue[count++] = t->cmdQueue[j];
-
-                  if (t->cmdQueue[j].cmd != __move)
+                 if (t->cmdQueue[j].cmd != __move)
                       continue;
 
-                  MoveParams *pt = (MoveParams *) t->cmdQueue[j].params;
+                 MoveParams *pt = (MoveParams *) t->cmdQueue[j].params;
                   if (curPt->dest.x == pt->dest.x && curPt->dest.y == pt->dest.y)
-                  {
+                 {
                       PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
                       polygonParams->count = j - i + 1;
                       polygonParams->apt = malloc(polygonParams->count * sizeof (POINT));
@@ -236,20 +240,37 @@ static void LinesToPolygon(void)
                           polygonParams->fill = temp->fill;
                           polygonParams->fillcolor = temp->fillcolor;
                       }
+
+                      found = true;
                       
+                      for (int k = i; k <= j; k++)
+                      {
+                          cmdQueue[count++] = t->cmdQueue[k];
+                      }
+
                       cmdQueue[count].cmd = __polygon;
                       cmdQueue[count].params = polygonParams;
                       count++;
-
-                      i += j - 1;
+                     
+                      i = j;
                       break;
                   }
-                  
              }
-             i++;
+
+             if (!found)
+             {
+                  // check if repaeted
+                  cmdQueue[count++] = t->cmdQueue[i];
+                  i++;
+             }
+             
          }
          else
-            i++;
+         {
+             cmdQueue[count++] = t->cmdQueue[i];
+             i++;
+         }
+    
     }
 
     t->cmdQueue = cmdQueue;
@@ -300,6 +321,8 @@ static void __polygon(void *params)
         hBrush = GetStockObject(NULL_BRUSH);   
 
     SelectObject(t->hdc, hBrush);
+    SelectObject(t->hdc, GetStockObject(NULL_PEN));
+    SetPolyFillMode(t->hdc, WINDING);
 
     RECT rect;
     GetClientRect(t->hwnd, &rect);
