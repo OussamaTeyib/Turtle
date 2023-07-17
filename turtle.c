@@ -80,7 +80,10 @@ void init(void)
         t->pendown = true;
         t->fill = false;
 
-        // add 'move to (0, 0)' to the cmdQueue
+        MoveParams *initMove = malloc(sizeof (MoveParams));
+        initMove->dest.x = 0, initMove->dest.y = 0;
+        initMove->pendown = false;
+        PostCommand(__move, initMove);       
     }
 }
 
@@ -206,10 +209,16 @@ static void PostCommand(cmdFunction cmd, void *params)
 
 static void LinesToPolygon(void)
 {
+    if (t->nCmd == 1)
+    {
+        t->nCmd--;
+        return;
+    }
+
     Command *cmdQueue = malloc(t->maxCmd * sizeof (Command)); // to be changed
     int count = 0;
 
-    for (int i = 0; i < t->nCmd; )
+    for (int i = 0; i < t->nCmd;)
     {
         if (t->cmdQueue[i].cmd == __move)
         {
@@ -226,17 +235,25 @@ static void LinesToPolygon(void)
                 if (curPt->dest.x == pt->dest.x && curPt->dest.y == pt->dest.y)
                 {
                     PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
-                    polygonParams->count = j - i + 1;
+                    polygonParams->count = 0;
+                    for (int k = i; k <= j; k++)
+                    {
+                        if (t->cmdQueue[k].cmd != __move)
+                            continue;
+
+                        polygonParams->count++;
+                    }
+
                     polygonParams->apt = malloc(polygonParams->count * sizeof (POINT));
 
-                    for (int k = i; k <= j; k++)
+                    for (int k = i, aptCount = 0; k <= j; k++)
                     {
                         if (t->cmdQueue[k].cmd != __move)
                             continue;
 
                         MoveParams *temp = (MoveParams *) t->cmdQueue[k].params;
 
-                        polygonParams->apt[k - i] = temp->dest;
+                        polygonParams->apt[aptCount++] = temp->dest;
                         polygonParams->fill = temp->fill;
                         polygonParams->fillcolor = temp->fillcolor;
                     }
@@ -291,7 +308,7 @@ static void __move(void *params)
 
     HPEN hPen;
     if (moveParams->pendown)
-        hPen = CreatePen(PS_SOLID, 1, moveParams->pencolor);
+        hPen = CreatePen(PS_SOLID, 2, moveParams->pencolor);
     else
         hPen = GetStockObject(NULL_PEN);   
 
