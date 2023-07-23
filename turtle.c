@@ -310,41 +310,38 @@ static void __move(void *params)
 {
     MoveParams *moveParams = (MoveParams *) params;
 
-    HPEN hPen;
+    HPEN hPen, hPrevPen;
     if (moveParams->pendown)
         hPen = CreatePen(PS_SOLID, 1, moveParams->pencolor);
     else
         hPen = GetStockObject(NULL_PEN);   
 
-    SelectObject(t->hdc, hPen);
+    hPrevPen = SelectObject(t->hdc, hPen);
 
     LineTo(t->hdc, moveParams->dest.x, moveParams->dest.y);
 
     if (moveParams->pendown)
-    {
-     // the pen is currently selected don't destroy it before changing 
-        DeleteObject(hPen);
-    }
+        DeleteObject(SelectObject(t->hdc, hPrevPen));
 }
 
 static void __polygon(void *params)
 {
     PolygonParams *polygonParams = (PolygonParams *) params;
 
-    HBRUSH hBrush;
+    HBRUSH hBrush, hPrevBrush;
     if (polygonParams->fill)
         hBrush = CreateSolidBrush(polygonParams->fillcolor);
     else
         hBrush = GetStockObject(NULL_BRUSH);   
 
-    SelectObject(t->hdc, hBrush);
+    hPrevBrush = SelectObject(t->hdc, hBrush);
     SelectObject(t->hdc, GetStockObject(NULL_PEN));
     SetPolyFillMode(t->hdc, WINDING);
 
     Polygon(t->hdc, polygonParams->apt, polygonParams->count);
 
     if (polygonParams->fill)
-        DeleteObject(hBrush);
+        DeleteObject(SelectObject(t->hdc, hPrevBrush));
 }
 
 void forward(int distance)
@@ -547,26 +544,25 @@ static void __circle(void *params)
     rect.right = curPos.x + circleParams->r;
     rect.bottom = curPos.y;
 
-    HPEN hPen;
+    HPEN hPen, hPrevPen;
     if (circleParams->pendown)
         hPen = CreatePen(PS_SOLID, 1, circleParams->pencolor);
     else
         hPen = GetStockObject(NULL_PEN);
-        
 
-    HBRUSH hBrush;
+    HBRUSH hBrush, hPrevBrush;
     if (circleParams->fill)
         hBrush = CreateSolidBrush(circleParams->fillcolor);
     else
         hBrush = GetStockObject(NULL_BRUSH);
 
-    SelectObject(t->hdc, hPen);
-    SelectObject(t->hdc, hBrush);
+    hPrevPen = SelectObject(t->hdc, hPen);
+    hPrevBrush = SelectObject(t->hdc, hBrush);
 
     Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
 
     if (circleParams->pendown)
-        DeleteObject(hPen);
+        DeleteObject(SelectObject(t->hdc, hPrevPen));
     if (circleParams->fill)
-        DeleteObject(hBrush);
+        DeleteObject(SelectObject(t->hdc, hPrevBrush));
 }
