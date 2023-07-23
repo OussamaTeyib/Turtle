@@ -144,13 +144,13 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
 
         case WM_SIZE:
             xClient = LOWORD(lParam);
-            yClient = HIWORD(lParam);     
+            yClient = HIWORD(lParam);  
             return 0;
 
         case WM_PAINT:
             t->hdc = BeginPaint(t->hwnd, &ps);
 
-            MoveToEx(t->hdc, xClient / 2, yClient / 2, NULL);
+            SetViewportOrgEx(t->hdc, xClient / 2, yClient / 2, NULL);  
             ExecuteCommands();
 
             EndPaint(t->hwnd, &ps);
@@ -308,22 +308,23 @@ static void __move(void *params)
 
     HPEN hPen;
     if (moveParams->pendown)
-        hPen = CreatePen(PS_SOLID, 2, moveParams->pencolor);
+        hPen = CreatePen(PS_SOLID, 1, moveParams->pencolor);
     else
         hPen = GetStockObject(NULL_PEN);   
 
     SelectObject(t->hdc, hPen);
 
     POINT dest;
-    RECT rect;
-    GetClientRect(t->hwnd, &rect);
-    dest.x = rect.right / 2 + moveParams->dest.x;
-    dest.y = rect.bottom / 2 - moveParams->dest.y; // '-' because that y-axis increases downward
+    dest.x = moveParams->dest.x;
+    dest.y = -moveParams->dest.y; // '-' because that y-axis increases downward
 
     LineTo(t->hdc, dest.x, dest.y);
 
     if (moveParams->pendown)
+    {
+     // the pen is currently selected don't destroy it before changing 
         DeleteObject(hPen);
+    }
 }
 
 static void __polygon(void *params)
@@ -339,15 +340,12 @@ static void __polygon(void *params)
     SelectObject(t->hdc, hBrush);
     SelectObject(t->hdc, GetStockObject(NULL_PEN));
     SetPolyFillMode(t->hdc, WINDING);
-
-    RECT rect;
-    GetClientRect(t->hwnd, &rect);
    
     POINT apt[polygonParams->count];
     for (int i = 0; i < polygonParams->count; i++)
     {
-        apt[i].x = rect.right / 2 + polygonParams->apt[i].x;
-        apt[i].y = rect.bottom / 2 - polygonParams->apt[i].y; 
+        apt[i].x = polygonParams->apt[i].x;
+        apt[i].y = -polygonParams->apt[i].y; 
     }
 
     Polygon(t->hdc, apt, polygonParams->count);
@@ -552,9 +550,9 @@ static void __circle(void *params)
 
     RECT rect;
     rect.left = curPos.x - circleParams->r;
-    rect.top = curPos.y - circleParams->r;
+    rect.top = curPos.y - 2 * circleParams->r;
     rect.right = curPos.x + circleParams->r;
-    rect.bottom = curPos.y + circleParams->r;
+    rect.bottom = curPos.y;
 
     HPEN hPen;
     if (circleParams->pendown)
