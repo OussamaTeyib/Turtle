@@ -4,7 +4,9 @@ int main(void)
 {
     init();
     color("green");
-    left(40);
+    fd(100);
+    circle(50);
+
     show(); 
     return 0;
 }

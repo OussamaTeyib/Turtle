@@ -16,19 +16,19 @@ int main(void)
     end_fill();
 
     up();
-    goto(-150, -80);
+    goto(-150, -70);
     down();
     color("green");
     begin_fill();
     for (int i = 0; i < 4; i++)
     {
-        fd(300 - 140 * (i % 2));
+        fd(300 - 160 * (i % 2));
         left(90);
     }
     end_fill();
 
     up();
-    goto(0, -10);
+    goto(0, -60);
     down();
     color("yellow");
     begin_fill();
@@ -36,7 +36,7 @@ int main(void)
     end_fill();
 
     up();
-    goto(0, 5);
+    goto(0, -45);
     down();
     color("green");
     begin_fill();
