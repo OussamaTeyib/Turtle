@@ -150,7 +150,11 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
         case WM_PAINT:
             t->hdc = BeginPaint(t->hwnd, &ps);
 
-            SetViewportOrgEx(t->hdc, xClient / 2, yClient / 2, NULL);  
+            SetMapMode(t->hdc, MM_ISOTROPIC);
+            SetWindowExtEx(t->hdc, 1, 1, NULL);
+            SetViewportExtEx(t->hdc, 1, -1, NULL); // '-' to have the y-axis increase upward
+            SetViewportOrgEx(t->hdc, xClient / 2, yClient / 2, NULL);
+ 
             ExecuteCommands();
 
             EndPaint(t->hwnd, &ps);
@@ -314,11 +318,7 @@ static void __move(void *params)
 
     SelectObject(t->hdc, hPen);
 
-    POINT dest;
-    dest.x = moveParams->dest.x;
-    dest.y = -moveParams->dest.y; // '-' because that y-axis increases downward
-
-    LineTo(t->hdc, dest.x, dest.y);
+    LineTo(t->hdc, moveParams->dest.x, moveParams->dest.y);
 
     if (moveParams->pendown)
     {
@@ -340,15 +340,8 @@ static void __polygon(void *params)
     SelectObject(t->hdc, hBrush);
     SelectObject(t->hdc, GetStockObject(NULL_PEN));
     SetPolyFillMode(t->hdc, WINDING);
-   
-    POINT apt[polygonParams->count];
-    for (int i = 0; i < polygonParams->count; i++)
-    {
-        apt[i].x = polygonParams->apt[i].x;
-        apt[i].y = -polygonParams->apt[i].y; 
-    }
 
-    Polygon(t->hdc, apt, polygonParams->count);
+    Polygon(t->hdc, polygonParams->apt, polygonParams->count);
 
     if (polygonParams->fill)
         DeleteObject(hBrush);
@@ -550,7 +543,7 @@ static void __circle(void *params)
 
     RECT rect;
     rect.left = curPos.x - circleParams->r;
-    rect.top = curPos.y - 2 * circleParams->r;
+    rect.top = curPos.y + 2 * circleParams->r;
     rect.right = curPos.x + circleParams->r;
     rect.bottom = curPos.y;
 
