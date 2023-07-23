@@ -20,6 +20,7 @@ int main(void)
     home();
     down();
     color("yellow");
+    begin_fill();
     left(36);
     for (int i = 0; i < 12; i++)
     {

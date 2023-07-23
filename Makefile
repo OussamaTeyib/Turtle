@@ -3,3 +3,6 @@ build: turtle.c
 
 upload:
 	giter . "..."
+
+clean:
+	rm -f *.exe
