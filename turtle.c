@@ -23,6 +23,15 @@ static void __polygon(void *params);
 static void __circle(void *params);
 static COLORREF GetColor(const char *szColor);
 
+enum color {
+    WHITE = RGB(255, 255, 255),
+    BLACK = RGB(0, 0, 0),
+    RED = RGB(255, 0, 0),
+    GREEN = RGB(0, 255, 0),
+    BLUE = RGB(0, 0, 255),
+    YELLOW = RGB(255, 255, 0),
+};
+
 typedef struct {
     HWND hwnd;
     HDC hdc;
@@ -35,7 +44,7 @@ typedef struct {
     Command *cmdQueue;
     int nCmd;
     int maxCmd;
-} Turtle;
+} Turtle;  
 
 typedef struct
 { 
@@ -67,24 +76,27 @@ static Turtle *t = NULL;
 void init(void)
 {
     t = malloc(sizeof (Turtle));
-    if (t)
-    {
-        t->maxCmd = MAX_CMDS;
-        t->cmdQueue = malloc(t->maxCmd * sizeof (Command));
-        t->nCmd = 0;
+    if (!t)
+        return;
 
-        t->pos.x = 0, t->pos.y = 0;
-        t->angle = 0.0;
-        t->pencolor = RGB(0, 0, 0);
-        t->fillcolor = RGB(0, 0, 0);
-        t->pendown = true;
-        t->fill = false;
+    t->pos.x = 0, t->pos.y = 0;
+    t->angle = 0.0;
+    t->pencolor = BLACK;
+    t->fillcolor = BLACK;
+    t->pendown = true;
+    t->fill = false;
 
-        MoveParams *initMove = malloc(sizeof (MoveParams));
-        initMove->dest.x = 0, initMove->dest.y = 0;
-        initMove->pendown = false;
-        PostCommand(__move, initMove);       
-    }
+    t->maxCmd = MAX_CMDS;
+    t->cmdQueue = malloc(t->maxCmd * sizeof (Command));
+    if (!t->cmdQueue)
+        return;
+
+    t->nCmd = 0;
+
+    MoveParams *initMove = malloc(sizeof (MoveParams));
+    initMove->dest.x = 0, initMove->dest.y = 0;
+    initMove->pendown = false;
+    PostCommand(__move, initMove);
 }
 
 static void CreateCanvas(void)
@@ -202,8 +214,10 @@ static void PostCommand(cmdFunction cmd, void *params)
     {
         t->maxCmd *= 2;
         Command *cmdQueue = realloc(t->cmdQueue, t->maxCmd * sizeof (Command));
-        if (cmdQueue)
-            t->cmdQueue = cmdQueue;
+        if (!cmdQueue)
+            return;
+
+        t->cmdQueue = cmdQueue;
     }
     
     Command command = {cmd, params};
@@ -426,17 +440,17 @@ static COLORREF GetColor(const char *szColor)
     // handle all chars cases
  
     if (!strncmp(szColor, "white", 5))
-        return RGB(255, 255, 255);
+        return WHITE;
     else if (!strncmp(szColor, "black", 5))
-        return RGB(0, 0, 0);
+        return BLACK;
     else if (!strncmp(szColor, "red", 3))
-        return RGB(255, 0, 0);
+        return RED;
     else if (!strncmp(szColor, "green", 5))
-        return RGB(0, 255, 0);
+        return GREEN;
     else if (!strncmp(szColor, "blue", 4))
-        return RGB(0, 0, 255);
+        return BLUE;
     else if (!strncmp(szColor, "yellow", 6))
-        return RGB(255, 255, 0);
+        return YELLOW;
     else
         return -1;
 }
@@ -446,14 +460,8 @@ void color(const char *szColor)
     if (!t || !t->cmdQueue || !szColor)
        return;
 
-    COLORREF color;
-    if ((color = GetColor(szColor)) != (COLORREF) -1)
-    {
-        t->pencolor = color;
-        t->fillcolor = color;
-    }
-    else
-        return;
+    pencolor(szColor);
+    fillcolor(szColor); 
 }
 
 void pencolor(const char *szColor)
@@ -462,12 +470,10 @@ void pencolor(const char *szColor)
        return;
 
     COLORREF color;
-    if ((color = GetColor(szColor)) != (COLORREF) -1)
-    {
-        t->pencolor = color;
-    }
-    else
+    if ((color = GetColor(szColor)) == (COLORREF) -1)
         return;
+
+    t->pencolor = color; 
 }
 
 void fillcolor(const char *szColor)
@@ -476,12 +482,10 @@ void fillcolor(const char *szColor)
        return;
 
     COLORREF color;
-    if ((color = GetColor(szColor)) != (COLORREF) -1)
-    {
-        t->fillcolor = color;
-    }
-    else
+    if ((color = GetColor(szColor)) == (COLORREF) -1)
         return;
+
+    t->fillcolor = color; 
 }
 
 void penup(void)
