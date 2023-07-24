@@ -197,7 +197,7 @@ static void cleanup(void)
         {
             PolygonParams *polygonParams = (PolygonParams *) t->cmdQueue[i].params;
             free(polygonParams->apt);
-        }
+        } 
         free(t->cmdQueue[i].params);
     }
 
@@ -221,8 +221,7 @@ static void PostCommand(cmdFunction cmd, void *params)
     }
     
     Command command = {cmd, params};
-    t->cmdQueue[t->nCmd] = command;
-    t->nCmd++;
+    t->cmdQueue[t->nCmd++] = command;
 }
 
 static void LinesToPolygon(void)
@@ -234,14 +233,15 @@ static void LinesToPolygon(void)
     }
 
     Command *cmdQueue = malloc(t->maxCmd * sizeof (Command)); // to be changed
-    int count = 0;
+    if (!cmdQueue)
+       return;
 
+    int count = 0;
     for (int i = 0; i < t->nCmd;)
     {
         if (t->cmdQueue[i].cmd == __move)
         {
             MoveParams *curPt = (MoveParams *) t->cmdQueue[i].params;
-
             bool found = false;
 
             for (int j = i + 1; j < t->nCmd; j++)
@@ -283,9 +283,8 @@ static void LinesToPolygon(void)
                         cmdQueue[count++] = t->cmdQueue[k];
                     }
 
-                    cmdQueue[count].cmd = __polygon;
-                    cmdQueue[count].params = polygonParams;
-                    count++;
+                    Command command = {__polygon, polygonParams};
+                    cmdQueue[count++] = command;
                      
                     i = j;
                     break;
@@ -307,6 +306,7 @@ static void LinesToPolygon(void)
     
     }
 
+    free(t->cmdQueue);
     t->cmdQueue = cmdQueue;
     t->nCmd = count;
 }
@@ -324,38 +324,44 @@ static void __move(void *params)
 {
     MoveParams *moveParams = (MoveParams *) params;
 
-    HPEN hPen, hPrevPen;
+    HPEN hPen;
     if (moveParams->pendown)
         hPen = CreatePen(PS_SOLID, 1, moveParams->pencolor);
     else
         hPen = GetStockObject(NULL_PEN);   
 
-    hPrevPen = SelectObject(t->hdc, hPen);
+    SelectObject(t->hdc, hPen);
 
     LineTo(t->hdc, moveParams->dest.x, moveParams->dest.y);
 
+    // deselecting hPen before deleting it
+    SelectObject(t->hdc, GetStockObject(BLACK_PEN));
+
     if (moveParams->pendown)
-        DeleteObject(SelectObject(t->hdc, hPrevPen));
+        DeleteObject(hPen);
 }
 
 static void __polygon(void *params)
 {
     PolygonParams *polygonParams = (PolygonParams *) params;
 
-    HBRUSH hBrush, hPrevBrush;
+    HBRUSH hBrush;
     if (polygonParams->fill)
         hBrush = CreateSolidBrush(polygonParams->fillcolor);
     else
         hBrush = GetStockObject(NULL_BRUSH);   
 
-    hPrevBrush = SelectObject(t->hdc, hBrush);
+    SelectObject(t->hdc, hBrush);
     SelectObject(t->hdc, GetStockObject(NULL_PEN));
     SetPolyFillMode(t->hdc, WINDING);
 
     Polygon(t->hdc, polygonParams->apt, polygonParams->count);
 
+    // deselecting hBrush before deleting it
+    SelectObject(t->hdc, GetStockObject(WHITE_BRUSH));
+
     if (polygonParams->fill)
-        DeleteObject(SelectObject(t->hdc, hPrevBrush));
+        DeleteObject(hBrush);
 }
 
 void forward(int distance)
@@ -548,25 +554,32 @@ static void __circle(void *params)
     rect.right = curPos.x + circleParams->r;
     rect.bottom = curPos.y;
 
-    HPEN hPen, hPrevPen;
+    HPEN hPen;
     if (circleParams->pendown)
         hPen = CreatePen(PS_SOLID, 1, circleParams->pencolor);
     else
         hPen = GetStockObject(NULL_PEN);
 
-    HBRUSH hBrush, hPrevBrush;
+    HBRUSH hBrush;
     if (circleParams->fill)
         hBrush = CreateSolidBrush(circleParams->fillcolor);
     else
         hBrush = GetStockObject(NULL_BRUSH);
 
-    hPrevPen = SelectObject(t->hdc, hPen);
-    hPrevBrush = SelectObject(t->hdc, hBrush);
+    SelectObject(t->hdc, hPen);
+    SelectObject(t->hdc, hBrush);
 
     Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
 
+    // deselecting hPen before deleting it
+    SelectObject(t->hdc, GetStockObject(BLACK_PEN));
+   
     if (circleParams->pendown)
-        DeleteObject(SelectObject(t->hdc, hPrevPen));
+        DeleteObject(hPen);
+
+    // deselecting hBrush before deleting it
+    SelectObject(t->hdc, GetStockObject(WHITE_BRUSH));
+
     if (circleParams->fill)
-        DeleteObject(SelectObject(t->hdc, hPrevBrush));
+        DeleteObject(hBrush);
 }
