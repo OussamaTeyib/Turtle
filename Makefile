@@ -1,5 +1,5 @@
 build: turtle.c
-	gcc -shared -I. turtle.c -lgdi32 -Wall -Wextra -Werror -o libturtle.dll
+	gcc -shared -I. turtle.c -g -o libturtle.dll -lgdi32 -Wall -Wextra -Werror
 
 upload:
 	giter . "..."
