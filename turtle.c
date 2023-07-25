@@ -338,7 +338,11 @@ static void __move(void *params)
     SelectObject(t->hdc, GetStockObject(BLACK_PEN));
 
     if (moveParams->pendown)
+    {
+        // deselect hPen before deleting it
+        SelectObject(t->hdc, GetStockObject(BLACK_PEN));
         DeleteObject(hPen);
+    }
 }
 
 static void __polygon(void *params)
@@ -357,11 +361,12 @@ static void __polygon(void *params)
 
     Polygon(t->hdc, polygonParams->apt, polygonParams->count);
 
-    // deselecting hBrush before deleting it
-    SelectObject(t->hdc, GetStockObject(WHITE_BRUSH));
-
     if (polygonParams->fill)
+    {
+        // deselect hBrush before deleting it
+        SelectObject(t->hdc, GetStockObject(WHITE_BRUSH));
         DeleteObject(hBrush);
+    }
 }
 
 void forward(int distance)
@@ -571,15 +576,15 @@ static void __circle(void *params)
 
     Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
 
-    // deselecting hPen before deleting it
-    SelectObject(t->hdc, GetStockObject(BLACK_PEN));
-   
     if (circleParams->pendown)
+    {
+        SelectObject(t->hdc, GetStockObject(BLACK_PEN));
         DeleteObject(hPen);
-
-    // deselecting hBrush before deleting it
-    SelectObject(t->hdc, GetStockObject(WHITE_BRUSH));
+    }
 
     if (circleParams->fill)
+    {
+        SelectObject(t->hdc, GetStockObject(WHITE_BRUSH));
         DeleteObject(hBrush);
+    }
 }
