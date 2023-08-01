@@ -101,7 +101,7 @@ void init(void)
 
 static void CreateCanvas(void)
 {
-    char *className = "MainWindow";
+    const char *className = "MainWindow";
     HINSTANCE hInstance = GetModuleHandle(NULL);
 
     WNDCLASS wc = {0};
@@ -133,25 +133,20 @@ static void CreateCanvas(void)
     {
         DispatchMessage(&msg);
     }
+
+    UnregisterClass(className, hInstance);
 }
 
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     static int xClient, yClient;
-    static HINSTANCE hInstance;
-    static char ClassName[100];
     PAINTSTRUCT ps;
 
     switch(message)
     {
         case WM_CREATE:
             t->hwnd = hwnd;
-
-            hInstance = GetModuleHandle(NULL);
-            GetClassName(t->hwnd, ClassName, 100);
-            
             LinesToPolygon();
-
             return 0;
 
         case WM_SIZE:
@@ -173,7 +168,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
             return 0;
 
         case WM_DESTROY:
-            UnregisterClass(ClassName, hInstance);
             PostQuitMessage(0);
             return 0;
     }
@@ -195,9 +189,9 @@ static void cleanup(void)
     {
         if (t->cmdQueue[i].cmd == __polygon)
         {
-            PolygonParams *polygonParams = (PolygonParams *) t->cmdQueue[i].params;
-            free(polygonParams->apt);
-        } 
+            PolygonParams *temp = (PolygonParams *) t->cmdQueue[i].params;
+            free(temp->apt);
+        }
         free(t->cmdQueue[i].params);
     }
 
