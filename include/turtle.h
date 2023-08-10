@@ -1,6 +1,10 @@
 #ifndef TURTLE_H
 #define TURTLE_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void init(void);
 void show(void);
 void forward(int distance);
@@ -26,5 +30,9 @@ void fillcolor(const char *color);
 #define pu() penup()
 #define down() pendown()
 #define pd() pendown()
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
