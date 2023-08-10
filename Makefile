@@ -10,5 +10,5 @@ LIB_DIR := lib
 SRC := $(SRC_DIR)/turtle.c
 TARGET := $(LIB_DIR)/libturtle.dll
 
-$(TARGET): $(SRC)
+build: $(SRC)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET) $(SRC) -I$(INCLUDE_DIR) $(LIBS)
