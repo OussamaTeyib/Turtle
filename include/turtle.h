@@ -18,15 +18,13 @@ void color(const char *color);
 void pencolor(const char *color);
 void fillcolor(const char *color);
 
-#define fd(distance) forward((distance))
-#define goto(x, y) setpos((x), (y))
-#define setposition(x, y) setpos((x), (y))
-#define seth(angle) setheading((angle))
+#define fd(distance) forward(distance)
+#define goto(x, y) setpos(x, y)
+#define setposition(x, y) setpos(x, y)
+#define seth(angle) setheading(angle)
 #define up() penup()
 #define pu() penup()
 #define down() pendown()
 #define pd() pendown()
-
-
 
 #endif

@@ -1,5 +1,14 @@
-build: turtle.c
-	gcc -shared -I. turtle.c -g -o libturtle.dll -lgdi32 -Wall -Wextra -Werror
+CC := gcc
+# 'gnu2x' defines 'M_PI' unlike the standard 'c2x'
+CFLAGS := -g -std=gnu2x -Wall -Wextra -Werror
+LDFLAGS := -shared
+LIBS := -lgdi32
+INCLUDE_DIR := include
+SRC_DIR := src
+LIB_DIR := lib
 
-clean:
-	rm -f *.exe
+SRC := $(SRC_DIR)/turtle.c
+TARGET := $(LIB_DIR)/libturtle.dll
+
+$(TARGET): $(SRC)
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET) $(SRC) -I$(INCLUDE_DIR) $(LIBS)
