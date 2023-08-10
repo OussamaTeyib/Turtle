@@ -1,5 +1,7 @@
-#include <turtle.h>
+#define _USE_MATH_DEFINES
+
 #include <math.h>
+#include <turtle.h>
 
 int main(void)
 {

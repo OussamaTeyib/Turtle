@@ -3,7 +3,7 @@
 #include <math.h>
 #include <stdbool.h>
 
-#define MAX_CMDS 50
+#define MAX_CMDS 100
 
 typedef void (*cmdFunction) (void *);
 
