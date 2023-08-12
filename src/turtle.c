@@ -1,3 +1,5 @@
+#define _USE_MATH_DEFINES
+
 #include <turtle.h>
 #include <windows.h>
 #include <math.h>
@@ -79,6 +81,8 @@ void init(void)
     if (!t)
         return;
 
+    t->hwnd = NULL;
+    t->hdc = NULL;
     t->pos.x = 0, t->pos.y = 0;
     t->angle = 0.0;
     t->pencolor = BLACK;
@@ -87,12 +91,11 @@ void init(void)
     t->fill = false;
 
     t->maxCmd = MAX_CMDS;
-    t->cmdQueue = malloc(t->maxCmd * sizeof (Command));
+    t->cmdQueue = calloc(t->maxCmd, sizeof (Command));
     if (!t->cmdQueue)
         return;
 
     t->nCmd = 0;
-
     MoveParams *initMove = malloc(sizeof (MoveParams));
     initMove->dest.x = 0, initMove->dest.y = 0;
     initMove->pendown = false;
@@ -112,7 +115,8 @@ static void CreateCanvas(void)
     wc.hbrBackground = (HBRUSH) (COLOR_WINDOW + 1);
     wc.lpszClassName = className;
 
-    RegisterClass(&wc);
+    if (!RegisterClass(&wc))
+        return;
 
     int xScreen = GetSystemMetrics(SM_CXSCREEN);
     int yScreen = GetSystemMetrics(SM_CYSCREEN);
@@ -124,6 +128,11 @@ static void CreateCanvas(void)
     window.bottom = 6 * yScreen / 8;
 
     HWND hwnd = CreateWindow(className, "C Turtle Graphics", WS_OVERLAPPEDWINDOW, window.left, window.top, window.right, window.bottom, NULL, NULL, hInstance, NULL);
+
+    if (!hwnd)
+        return;
+
+    t->hwnd = hwnd;
 
     ShowWindow(hwnd, SW_SHOWDEFAULT);
     UpdateWindow(hwnd);
@@ -144,11 +153,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
 
     switch(message)
     {
-        case WM_CREATE:
-            t->hwnd = hwnd;
-            LinesToPolygon();
-            return 0;
-
         case WM_SIZE:
             xClient = LOWORD(lParam);
             yClient = HIWORD(lParam);  
@@ -162,7 +166,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
             SetViewportExtEx(t->hdc, 1, -1, NULL); // '-' to have the y-axis increase upward
             SetViewportOrgEx(t->hdc, xClient / 2, yClient / 2, NULL);
  
-            ExecuteCommands();
+            if (t->nCmd > 1)
+                ExecuteCommands();
 
             EndPaint(t->hwnd, &ps);
             return 0;
@@ -179,6 +184,7 @@ void show(void)
     if (!t || !t->cmdQueue)
        return;
 
+    LinesToPolygon();
     CreateCanvas();
     cleanup();
 }
@@ -209,7 +215,7 @@ static void PostCommand(cmdFunction cmd, void *params)
         t->maxCmd *= 2;
         Command *cmdQueue = realloc(t->cmdQueue, t->maxCmd * sizeof (Command));
         if (!cmdQueue)
-            return;
+		            return;
 
         t->cmdQueue = cmdQueue;
     }
@@ -220,25 +226,26 @@ static void PostCommand(cmdFunction cmd, void *params)
 
 static void LinesToPolygon(void)
 {
-    if (t->nCmd == 1)
-    {
-        t->nCmd--;
-        return;
-    }
+    if (1 == t->nCmd)
+       return;
 
-    Command *cmdQueue = malloc(t->maxCmd * sizeof (Command)); // to be changed
+    Command *cmdQueue = calloc(t->maxCmd, sizeof (Command)); // to be dynamically changed
     if (!cmdQueue)
        return;
 
     int count = 0;
-    for (int i = 0; i < t->nCmd;)
+
+    for (int i = 0; i < t->nCmd; i++)
     {
+        cmdQueue[count++] = t->cmdQueue[i];
+                
         if (t->cmdQueue[i].cmd == __move)
         {
             MoveParams *curPt = (MoveParams *) t->cmdQueue[i].params;
             bool found = false;
 
-            for (int j = i + 1; j < t->nCmd; j++)
+            int index;
+            for (int j = 0; j < i; j++)
             {
                 if (t->cmdQueue[j].cmd != __move)
                     continue;
@@ -246,58 +253,46 @@ static void LinesToPolygon(void)
                 MoveParams *pt = (MoveParams *) t->cmdQueue[j].params;
                 if (curPt->dest.x == pt->dest.x && curPt->dest.y == pt->dest.y)
                 {
-                    PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
-                    polygonParams->count = 0;
-                    for (int k = i; k <= j; k++)
-                    {
-                        if (t->cmdQueue[k].cmd != __move)
-                            continue;
-
-                        polygonParams->count++;
-                    }
-
-                    polygonParams->apt = malloc(polygonParams->count * sizeof (POINT));
-
-                    for (int k = i, aptCount = 0; k <= j; k++)
-                    {
-                        if (t->cmdQueue[k].cmd != __move)
-                            continue;
-
-                        MoveParams *temp = (MoveParams *) t->cmdQueue[k].params;
-
-                        polygonParams->apt[aptCount++] = temp->dest;
-                        polygonParams->fill = temp->fill;
-                        polygonParams->fillcolor = temp->fillcolor;
-                    }
-
+                    index = j;
                     found = true;
-                      
-                    for (int k = i; k <= j; k++)
-                    {
-                        cmdQueue[count++] = t->cmdQueue[k];
-                    }
-
-                    Command command = {__polygon, polygonParams};
-                    cmdQueue[count++] = command;
-                     
-                    i = j;
-                    break;
                 }
             }
 
-            if (!found)
+            if (found)
             {
-                // check if repaeted
-                cmdQueue[count++] = t->cmdQueue[i];
-                i++;
-            }             
+                PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
+                if (!polygonParams)
+                    return;
+
+                polygonParams->count = 0;
+                for (int k = index; k <= i; k++)
+                {
+                    if (t->cmdQueue[k].cmd != __move)
+                        continue;
+
+                    polygonParams->count++;
+                } 
+
+                polygonParams->apt = calloc(polygonParams->count, sizeof (POINT));
+                if (!polygonParams->apt)
+                    return;
+
+                for (int k = index, aptCount = 0; k <= i; k++)
+                {
+                    if (t->cmdQueue[k].cmd != __move)
+                        continue;
+
+                    MoveParams *temp = (MoveParams *) t->cmdQueue[k].params;
+
+                    polygonParams->apt[aptCount++] = temp->dest;
+                    polygonParams->fill = temp->fill;
+                    polygonParams->fillcolor = temp->fillcolor;
+                }
+
+                Command command = {__polygon, polygonParams};
+                cmdQueue[count++] = command;
+            }
         }
-        else
-        {
-            cmdQueue[count++] = t->cmdQueue[i];
-            i++;
-        }
-    
     }
 
     free(t->cmdQueue);

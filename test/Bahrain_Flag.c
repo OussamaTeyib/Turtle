@@ -8,13 +8,13 @@ int main(void)
     goto(-150, -100);
     down();
     color("red");
+
     for(int i = 0; i < 4; i++)
     {
         forward(300 - 100 * (i % 2));
 	left(90);
     }
 
-    begin_fill();
     forward(100);
     for(int i = 0; i < 3; i++)
     {
@@ -22,6 +22,7 @@ int main(void)
         left(90);
     }
 
+    begin_fill();
     left(60);
     for(int i = 0; i < 5; i++)
     {

@@ -1,6 +1,5 @@
 CC := gcc
-# 'gnu2x' defines 'M_PI' unlike the standard 'c2x'
-CFLAGS := -g -std=gnu2x -Wall -Wextra -Werror
+CFLAGS := -g -std=c2x -Wall -Wextra -Werror
 LDFLAGS := -shared
 LIBS := -lgdi32
 INCLUDE_DIR := include

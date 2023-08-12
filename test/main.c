@@ -3,10 +3,11 @@
 int main(void)
 {
     init();
-    color("green");
+    show();
+    begin_fill();
     fd(100);
-    circle(50);
-
-    show(); 
+    goto(50, 50);
+    home();
+    end_fill(); 
     return 0;
 }
