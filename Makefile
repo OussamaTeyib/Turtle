@@ -7,7 +7,8 @@ SRC_DIR := src
 LIB_DIR := lib
 
 SRC := $(SRC_DIR)/turtle.c
+# INCLUDES: $(INCLUDE_DIR)/turtle.h
 TARGET := $(LIB_DIR)/libturtle.dll
 
-build: $(SRC)
+$(TARGET): $(SRC)
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $(TARGET) $(SRC) -I$(INCLUDE_DIR) $(LIBS)

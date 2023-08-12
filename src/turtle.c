@@ -1,3 +1,4 @@
+// to use M_PI
 #define _USE_MATH_DEFINES
 
 #include <turtle.h>
@@ -77,13 +78,17 @@ static Turtle *t = NULL;
 
 void init(void)
 {
+    // Already initialized?
+    if (t)
+        cleanup();
+
     t = malloc(sizeof (Turtle));
     if (!t)
         return;
 
     t->hwnd = NULL;
     t->hdc = NULL;
-    t->pos.x = 0, t->pos.y = 0;
+    t->pos = (POINT) {0, 0};
     t->angle = 0.0;
     t->pencolor = BLACK;
     t->fillcolor = BLACK;
@@ -108,6 +113,7 @@ static void CreateCanvas(void)
     HINSTANCE hInstance = GetModuleHandle(NULL);
 
     WNDCLASS wc = {0};
+    // to re-paint the client area when the window's size changes
     wc.style = CS_VREDRAW | CS_HREDRAW;
     wc.lpfnWndProc = WndProc;
     wc.hInstance = hInstance;
@@ -139,9 +145,7 @@ static void CreateCanvas(void)
 
     MSG msg;
     while (GetMessage(&msg, hwnd, 0, 0) > 0)
-    {
         DispatchMessage(&msg);
-    }
 
     UnregisterClass(className, hInstance);
 }
@@ -166,8 +170,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
             SetViewportExtEx(t->hdc, 1, -1, NULL); // '-' to have the y-axis increase upward
             SetViewportOrgEx(t->hdc, xClient / 2, yClient / 2, NULL);
  
-            if (t->nCmd > 1)
-                ExecuteCommands();
+            ExecuteCommands();
 
             EndPaint(t->hwnd, &ps);
             return 0;
@@ -203,6 +206,8 @@ static void cleanup(void)
 
     free(t->cmdQueue);
     free(t);
+    // prevent any re-use before re-initialization
+    t = NULL;
 }
 
 static void PostCommand(cmdFunction cmd, void *params)
@@ -215,17 +220,17 @@ static void PostCommand(cmdFunction cmd, void *params)
         t->maxCmd *= 2;
         Command *cmdQueue = realloc(t->cmdQueue, t->maxCmd * sizeof (Command));
         if (!cmdQueue)
-		            return;
+            return;
 
         t->cmdQueue = cmdQueue;
     }
     
-    Command command = {cmd, params};
-    t->cmdQueue[t->nCmd++] = command;
+    t->cmdQueue[t->nCmd++] = (Command) {cmd, params};
 }
 
 static void LinesToPolygon(void)
 {
+    // skip if there is only the initial move in the cmdQueue
     if (1 == t->nCmd)
        return;
 
@@ -238,7 +243,7 @@ static void LinesToPolygon(void)
     for (int i = 0; i < t->nCmd; i++)
     {
         cmdQueue[count++] = t->cmdQueue[i];
-                
+        // check if this position is repeaated
         if (t->cmdQueue[i].cmd == __move)
         {
             MoveParams *curPt = (MoveParams *) t->cmdQueue[i].params;
@@ -253,6 +258,7 @@ static void LinesToPolygon(void)
                 MoveParams *pt = (MoveParams *) t->cmdQueue[j].params;
                 if (curPt->dest.x == pt->dest.x && curPt->dest.y == pt->dest.y)
                 {
+                    // Get the closest occurence
                     index = j;
                     found = true;
                 }
@@ -285,12 +291,12 @@ static void LinesToPolygon(void)
                     MoveParams *temp = (MoveParams *) t->cmdQueue[k].params;
 
                     polygonParams->apt[aptCount++] = temp->dest;
+                    // Get filling info from the last line
                     polygonParams->fill = temp->fill;
                     polygonParams->fillcolor = temp->fillcolor;
                 }
 
-                Command command = {__polygon, polygonParams};
-                cmdQueue[count++] = command;
+                cmdQueue[count++] = (Command) {__polygon, polygonParams};
             }
         }
     }
@@ -313,49 +319,83 @@ static void __move(void *params)
 {
     MoveParams *moveParams = (MoveParams *) params;
 
-    HPEN hPen;
+    HPEN hPen, hPrevPen;
     if (moveParams->pendown)
         hPen = CreatePen(PS_SOLID, 1, moveParams->pencolor);
     else
         hPen = GetStockObject(NULL_PEN);   
 
-    SelectObject(t->hdc, hPen);
+    hPrevPen = SelectObject(t->hdc, hPen);
 
     LineTo(t->hdc, moveParams->dest.x, moveParams->dest.y);
 
     // deselecting hPen before deleting it
-    SelectObject(t->hdc, GetStockObject(BLACK_PEN));
+    SelectObject(t->hdc, hPrevPen);
 
     if (moveParams->pendown)
-    {
-        // deselect hPen before deleting it
-        SelectObject(t->hdc, GetStockObject(BLACK_PEN));
         DeleteObject(hPen);
-    }
 }
 
 static void __polygon(void *params)
 {
     PolygonParams *polygonParams = (PolygonParams *) params;
 
-    HBRUSH hBrush;
+    HBRUSH hBrush, hPrevBrush;
     if (polygonParams->fill)
         hBrush = CreateSolidBrush(polygonParams->fillcolor);
     else
         hBrush = GetStockObject(NULL_BRUSH);   
 
-    SelectObject(t->hdc, hBrush);
+    hPrevBrush = SelectObject(t->hdc, hBrush);
     SelectObject(t->hdc, GetStockObject(NULL_PEN));
     SetPolyFillMode(t->hdc, WINDING);
 
     Polygon(t->hdc, polygonParams->apt, polygonParams->count);
 
+    // deselect hBrush before deleting it
+    SelectObject(t->hdc, hPrevBrush);
+
     if (polygonParams->fill)
-    {
-        // deselect hBrush before deleting it
-        SelectObject(t->hdc, GetStockObject(WHITE_BRUSH));
         DeleteObject(hBrush);
-    }
+}
+
+static void __circle(void *params)
+{
+    CircleParams *circleParams = (CircleParams *) params;
+
+    POINT curPos;
+    GetCurrentPositionEx(t->hdc, &curPos);
+
+    RECT rect;
+    rect.left = curPos.x - circleParams->r;
+    rect.top = curPos.y + 2 * circleParams->r;
+    rect.right = curPos.x + circleParams->r;
+    rect.bottom = curPos.y;
+
+    HPEN hPen, hPrevPen;
+    if (circleParams->pendown)
+        hPen = CreatePen(PS_SOLID, 1, circleParams->pencolor);
+    else
+        hPen = GetStockObject(NULL_PEN);
+
+    HBRUSH hBrush, hPrevBrush;
+    if (circleParams->fill)
+        hBrush = CreateSolidBrush(circleParams->fillcolor);
+    else
+        hBrush = GetStockObject(NULL_BRUSH);
+
+    hPrevPen = SelectObject(t->hdc, hPen);
+    hPrevBrush = SelectObject(t->hdc, hBrush);
+
+    Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
+
+    SelectObject(t->hdc, hPrevPen);
+    if (circleParams->pendown)
+        DeleteObject(hPen);
+
+    SelectObject(t->hdc, hPrevBrush);
+    if (circleParams->fill)
+        DeleteObject(hBrush);
 }
 
 void forward(int distance)
@@ -533,47 +573,4 @@ void circle(int r)
     circleParams->fill = t->fill;
 
     PostCommand(__circle, circleParams);
-}
-
-static void __circle(void *params)
-{
-    CircleParams *circleParams = (CircleParams *) params;
-
-    POINT curPos;
-    GetCurrentPositionEx(t->hdc, &curPos);
-
-    RECT rect;
-    rect.left = curPos.x - circleParams->r;
-    rect.top = curPos.y + 2 * circleParams->r;
-    rect.right = curPos.x + circleParams->r;
-    rect.bottom = curPos.y;
-
-    HPEN hPen;
-    if (circleParams->pendown)
-        hPen = CreatePen(PS_SOLID, 1, circleParams->pencolor);
-    else
-        hPen = GetStockObject(NULL_PEN);
-
-    HBRUSH hBrush;
-    if (circleParams->fill)
-        hBrush = CreateSolidBrush(circleParams->fillcolor);
-    else
-        hBrush = GetStockObject(NULL_BRUSH);
-
-    SelectObject(t->hdc, hPen);
-    SelectObject(t->hdc, hBrush);
-
-    Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
-
-    if (circleParams->pendown)
-    {
-        SelectObject(t->hdc, GetStockObject(BLACK_PEN));
-        DeleteObject(hPen);
-    }
-
-    if (circleParams->fill)
-    {
-        SelectObject(t->hdc, GetStockObject(WHITE_BRUSH));
-        DeleteObject(hBrush);
-    }
 }

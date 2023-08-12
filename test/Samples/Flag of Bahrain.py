@@ -20,6 +20,7 @@ for i in range (5):
 		forward (40)
 		right (120)
 	right(120)
+
 end_fill()
 
 hideturtle()	

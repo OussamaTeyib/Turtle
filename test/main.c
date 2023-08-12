@@ -3,11 +3,9 @@
 int main(void)
 {
     init();
-    show();
-    begin_fill();
     fd(100);
-    goto(50, 50);
-    home();
-    end_fill(); 
+    init();
+    circle(100); 
+    show();
     return 0;
 }
