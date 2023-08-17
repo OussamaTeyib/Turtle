@@ -3,12 +3,12 @@
 int main(void)
 {	
     init();
-    for (int i = 0; i < 8; i++)
+    for (int i = 0; i < 2; i++)
     {
         up();
-        goto(-320, -320 + 80 * i);
+        goto(-160, -160 + 20 * i);
         down();
-        for (int j = 0; j < 8; j++)
+        for (int j = 0; j < 2; j++)
         {
             if (!((i + j) % 2))
                 color("green");
@@ -18,11 +18,11 @@ int main(void)
             begin_fill();
             for (int k = 0; k < 4; k++)
             {
-                forward(80);
+                forward(20);
                 left(90);
             }
-            forward(80);
             end_fill();
+            forward(20);
         }
     }
 

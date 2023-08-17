@@ -14,6 +14,7 @@ void setheading(double angle);
 void setpos(int x, int y);
 void home(void);
 void circle(int r);
+void width(int width);
 void penup(void);
 void pendown(void);
 void begin_fill(void);

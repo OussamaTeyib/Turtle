@@ -18,7 +18,7 @@ typedef struct {
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 static void CreateCanvas(void);
 static void cleanup(void);
-static void PostCommand(cmdFunction cmd, void *params);
+static void PostCommand(Command *cmdQueue, Command command, int *nCmd, int *maxCmd);
 static void LinesToPolygon(void);
 static void ExecuteCommands(void);
 static void __move(void *params);
@@ -29,6 +29,7 @@ static COLORREF GetColor(const char *szColor);
 enum color {
     WHITE = RGB(255, 255, 255),
     BLACK = RGB(0, 0, 0),
+    GREY = RGB(128, 128, 128),
     RED = RGB(255, 0, 0),
     GREEN = RGB(0, 255, 0),
     BLUE = RGB(0, 0, 255),
@@ -40,6 +41,7 @@ typedef struct {
     HDC hdc;
     POINT pos;
     double angle;
+    int penwidth;
     COLORREF pencolor;
     COLORREF fillcolor;
     bool pendown;
@@ -52,6 +54,7 @@ typedef struct {
 typedef struct
 { 
     POINT dest;
+    int penwidth;
     COLORREF pencolor;
     COLORREF fillcolor;
     bool pendown;
@@ -67,7 +70,9 @@ typedef struct
 } PolygonParams;
 
 typedef struct {
+    POINT pos;
     int r;
+    int penwidth;
     COLORREF pencolor;
     COLORREF fillcolor;
     bool pendown;
@@ -90,6 +95,7 @@ void init(void)
     t->hdc = NULL;
     t->pos = (POINT) {0, 0};
     t->angle = 0.0;
+    t->penwidth = 1;
     t->pencolor = BLACK;
     t->fillcolor = BLACK;
     t->pendown = true;
@@ -101,10 +107,11 @@ void init(void)
         return;
 
     t->nCmd = 0;
+    // add goto(0, 0) to the cmdQueue to improve polygon detection
     MoveParams *initMove = malloc(sizeof (MoveParams));
-    initMove->dest.x = 0, initMove->dest.y = 0;
+    initMove->dest = (POINT) {0, 0};
     initMove->pendown = false;
-    PostCommand(__move, initMove);
+    PostCommand(t->cmdQueue, (Command) {__move, initMove}, &t->nCmd, &t->maxCmd);
 }
 
 static void CreateCanvas(void)
@@ -210,22 +217,22 @@ static void cleanup(void)
     t = NULL;
 }
 
-static void PostCommand(cmdFunction cmd, void *params)
+static void PostCommand(Command *cmdQueue, Command command, int *nCmd, int *maxCmd)
 {
-    if (!t || !t->cmdQueue)
+    if (!cmdQueue || !nCmd || !maxCmd)
        return;
 
-    if (t->nCmd == t->maxCmd)
+    if (*nCmd == *maxCmd)
     {
-        t->maxCmd *= 2;
-        Command *cmdQueue = realloc(t->cmdQueue, t->maxCmd * sizeof (Command));
-        if (!cmdQueue)
+        *maxCmd *= 2;
+        Command *temp = realloc(cmdQueue, *maxCmd * sizeof (Command));
+        if (!temp)
             return;
 
-        t->cmdQueue = cmdQueue;
+        cmdQueue = temp;
     }
     
-    t->cmdQueue[t->nCmd++] = (Command) {cmd, params};
+    cmdQueue[(*nCmd)++] = command;
 }
 
 static void LinesToPolygon(void)
@@ -234,15 +241,16 @@ static void LinesToPolygon(void)
     if (1 == t->nCmd)
        return;
 
-    Command *cmdQueue = calloc(t->maxCmd, sizeof (Command)); // to be dynamically changed
+    int maxCmd = t->maxCmd;
+    Command *cmdQueue = calloc(maxCmd, sizeof (Command)); // to be dynamically changed
     if (!cmdQueue)
        return;
 
-    int count = 0;
+    int nCmd = 0;
 
     for (int i = 0; i < t->nCmd; i++)
     {
-        cmdQueue[count++] = t->cmdQueue[i];
+        PostCommand(cmdQueue, t->cmdQueue[i], &nCmd, &maxCmd);
         // check if this position is repeaated
         if (t->cmdQueue[i].cmd == __move)
         {
@@ -296,14 +304,15 @@ static void LinesToPolygon(void)
                     polygonParams->fillcolor = temp->fillcolor;
                 }
 
-                cmdQueue[count++] = (Command) {__polygon, polygonParams};
+                PostCommand(cmdQueue, (Command) {__polygon, polygonParams}, &nCmd, &maxCmd);
             }
         }
     }
 
     free(t->cmdQueue);
     t->cmdQueue = cmdQueue;
-    t->nCmd = count;
+    t->nCmd = nCmd;
+    t->maxCmd = maxCmd;
 }
 
 static void ExecuteCommands(void)
@@ -312,6 +321,7 @@ static void ExecuteCommands(void)
     {
          Command command = t->cmdQueue[i];
          command.cmd(command.params);
+         // Sleep(200);
     }
 }
 
@@ -321,7 +331,7 @@ static void __move(void *params)
 
     HPEN hPen, hPrevPen;
     if (moveParams->pendown)
-        hPen = CreatePen(PS_SOLID, 1, moveParams->pencolor);
+        hPen = CreatePen(PS_SOLID, moveParams->penwidth, moveParams->pencolor);
     else
         hPen = GetStockObject(NULL_PEN);   
 
@@ -363,18 +373,15 @@ static void __circle(void *params)
 {
     CircleParams *circleParams = (CircleParams *) params;
 
-    POINT curPos;
-    GetCurrentPositionEx(t->hdc, &curPos);
-
     RECT rect;
-    rect.left = curPos.x - circleParams->r;
-    rect.top = curPos.y + 2 * circleParams->r;
-    rect.right = curPos.x + circleParams->r;
-    rect.bottom = curPos.y;
+    rect.left = circleParams->pos.x - circleParams->r;
+    rect.top = circleParams->pos.y + 2 * circleParams->r;
+    rect.right = circleParams->pos.x + circleParams->r;
+    rect.bottom = circleParams->pos.y;
 
     HPEN hPen, hPrevPen;
     if (circleParams->pendown)
-        hPen = CreatePen(PS_SOLID, 1, circleParams->pencolor);
+        hPen = CreatePen(PS_SOLID, circleParams->penwidth, circleParams->pencolor);
     else
         hPen = GetStockObject(NULL_PEN);
 
@@ -410,15 +417,15 @@ void forward(int distance)
     moveParams->dest.x = round(t->pos.x + distance * cos(alpha));
     moveParams->dest.y = round(t->pos.y + distance * sin(alpha));
 
+    moveParams->penwidth = t->penwidth;
     moveParams->pencolor = t->pencolor;
     moveParams->fillcolor = t->fillcolor;
     moveParams->pendown = t->pendown;
     moveParams->fill = t->fill;
     
-    PostCommand(__move, moveParams);
+    PostCommand(t->cmdQueue, (Command) {__move, moveParams}, &t->nCmd, &t->maxCmd);
 
-    t->pos.x = moveParams->dest.x;
-    t->pos.y = moveParams->dest.y;
+    t->pos = moveParams->dest;
 }
 
 void left(double angle)
@@ -452,18 +459,16 @@ void setpos(int x, int y)
 
     MoveParams *moveParams = malloc(sizeof (MoveParams));
 
-    moveParams->dest.x = x;
-    moveParams->dest.y = y;
-
+    moveParams->dest = (POINT) {x, y};
+    moveParams->penwidth = t->penwidth;
     moveParams->pencolor = t->pencolor;
     moveParams->fillcolor = t->fillcolor;
     moveParams->pendown = t->pendown;
     moveParams->fill = t->fill;
     
-    PostCommand(__move, moveParams);
+    PostCommand(t->cmdQueue, (Command) {__move, moveParams}, &t->nCmd, &t->maxCmd);
 
-    t->pos.x = moveParams->dest.x;
-    t->pos.y = moveParams->dest.y;
+    t->pos = moveParams->dest;
 }
 
 void home(void)
@@ -475,6 +480,14 @@ void home(void)
     setheading(0.0);
 }
 
+void width(int width)
+{
+    if (!t || !t->cmdQueue)
+       return;
+
+    t->penwidth = width;
+}
+
 static COLORREF GetColor(const char *szColor)
 {
     // handle all chars cases
@@ -483,6 +496,8 @@ static COLORREF GetColor(const char *szColor)
         return WHITE;
     else if (!strncmp(szColor, "black", 5))
         return BLACK;
+    else if (!strncmp(szColor, "grey", 4))
+        return GREY;
     else if (!strncmp(szColor, "red", 3))
         return RED;
     else if (!strncmp(szColor, "green", 5))
@@ -566,11 +581,13 @@ void circle(int r)
        return;
 
     CircleParams *circleParams = malloc(sizeof (CircleParams));
+    circleParams->pos = t->pos;
     circleParams->r = r;
+    circleParams->penwidth = t->penwidth;
     circleParams->pencolor = t->pencolor;
     circleParams->fillcolor = t->fillcolor;
     circleParams->pendown = t->pendown;
     circleParams->fill = t->fill;
 
-    PostCommand(__circle, circleParams);
+    PostCommand(t->cmdQueue, (Command) {__circle, circleParams}, &t->nCmd, &t->maxCmd);
 }
