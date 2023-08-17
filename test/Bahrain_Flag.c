@@ -1,5 +1,4 @@
 #include <turtle.h>
-#include <math.h>
 
 int main(void)
 {
