@@ -2,7 +2,6 @@
 
 int main(void)
 {
-    init();
     // bgcolor("grey");
     up();
     goto(-150, -100);

@@ -5,7 +5,6 @@
 extern "C" {
 #endif
 
-void init(void);
 void show(void);
 void forward(int distance);
 void left(double angle);
