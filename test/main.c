@@ -2,10 +2,8 @@
 
 int main(void)
 {
-    init();
+    show();
     fd(100);
-    init();
-    circle(100); 
     show();
     return 0;
 }

@@ -15,6 +15,7 @@ typedef struct {
     void *params;
 } Command;
 
+static void init(void);
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 static void CreateCanvas(void);
 static void cleanup(void);
@@ -81,12 +82,8 @@ typedef struct {
 
 static Turtle *t = NULL;
 
-void init(void)
+static void init(void)
 {
-    // Already initialized?
-    if (t)
-        cleanup();
-
     t = malloc(sizeof (Turtle));
     if (!t)
         return;
@@ -191,8 +188,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
 
 void show(void)
 { 
-    if (!t || !t->cmdQueue)
-       return;
+    if (!t)
+       init();
 
     LinesToPolygon();
     CreateCanvas();
@@ -407,8 +404,8 @@ static void __circle(void *params)
 
 void forward(int distance)
 {
-    if (!t || !t->cmdQueue)
-       return;
+    if (!t)
+        init();
 
     MoveParams *moveParams = malloc(sizeof (MoveParams));
 
@@ -430,35 +427,35 @@ void forward(int distance)
 
 void left(double angle)
 {
-    if (!t || !t->cmdQueue)
-       return;
+    if (!t)
+        init();
 
     t->angle += angle;
 }
 
 void right(double angle)
 {   
-    if (!t || !t->cmdQueue)
-       return;
+    if (!t)
+        init();
 
     t->angle -= angle;
 }
 
 void setheading(double angle)
 {
-    if (!t || !t->cmdQueue)
-       return;
+    if (!t)
+        init();
 
     t->angle = angle;
 }
 
 void setpos(int x, int y)
 {
-    if (!t || !t->cmdQueue)
-       return;
+    if (!t)
+        init();
 
     MoveParams *moveParams = malloc(sizeof (MoveParams));
-
+ 
     moveParams->dest = (POINT) {x, y};
     moveParams->penwidth = t->penwidth;
     moveParams->pencolor = t->pencolor;
@@ -473,8 +470,8 @@ void setpos(int x, int y)
 
 void home(void)
 {
-    if (!t || !t->cmdQueue)
-       return;
+    if (!t)
+        init();
 
     setpos(0, 0);
     setheading(0.0);
@@ -482,8 +479,8 @@ void home(void)
 
 void width(int width)
 {
-    if (!t || !t->cmdQueue)
-       return;
+    if (!t)
+        init();
 
     t->penwidth = width;
 }
@@ -512,8 +509,11 @@ static COLORREF GetColor(const char *szColor)
 
 void color(const char *szColor)
 {
-    if (!t || !t->cmdQueue || !szColor)
-       return;
+    if (!szColor)
+        return;
+
+    if (!t)
+        init();
 
     pencolor(szColor);
     fillcolor(szColor); 
@@ -521,8 +521,11 @@ void color(const char *szColor)
 
 void pencolor(const char *szColor)
 {
-    if (!t || !t->cmdQueue || !szColor)
-       return;
+    if (!szColor)
+        return;
+
+    if (!t)
+        init();
 
     COLORREF color;
     if ((color = GetColor(szColor)) == (COLORREF) -1)
@@ -533,8 +536,11 @@ void pencolor(const char *szColor)
 
 void fillcolor(const char *szColor)
 {
-    if (!t || !t->cmdQueue || !szColor)
-       return;
+    if (!szColor)
+        return;
+
+    if (!t)
+        init();
 
     COLORREF color;
     if ((color = GetColor(szColor)) == (COLORREF) -1)
@@ -545,40 +551,40 @@ void fillcolor(const char *szColor)
 
 void penup(void)
 {
-    if (!t || !t->cmdQueue)
-        return;
+    if (!t)
+        init();
 
      t->pendown = false;
 }
 
 void pendown(void)
 {
-    if (!t || !t->cmdQueue)
-        return;
+    if (!t)
+        init();
 
      t->pendown= true;
 }
 
 void begin_fill(void)
 {
-    if (!t || !t->cmdQueue)
-        return;
+    if (!t)
+        init();
 
      t->fill = true;
 }
 
 void end_fill(void)
 {
-    if (!t || !t->cmdQueue)
-        return;
+    if (!t)
+        init();
 
      t->fill = false;
 }
 
 void circle(int r)
 {
-    if (!t || !t->cmdQueue)
-       return;
+    if (!t)
+       init();
 
     CircleParams *circleParams = malloc(sizeof (CircleParams));
     circleParams->pos = t->pos;

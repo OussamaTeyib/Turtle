@@ -2,7 +2,6 @@
 
 int main(void)
 {
-    init();
     up();
     goto(-150, -100);
     down();
