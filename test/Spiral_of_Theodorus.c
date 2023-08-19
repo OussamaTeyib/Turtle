@@ -12,7 +12,7 @@ int main(void)
 
     for (int i = 1; i <= 17; i++)
     {
-        color(colors[i - 1 % 17]);
+        color(colors[(i - 1) % 17]);
         begin_fill();
         left(90);
         forward(height);

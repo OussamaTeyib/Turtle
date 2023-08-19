@@ -7,7 +7,7 @@ int main(void)
         up();
         goto(-160, -160 + 20 * i);
         down();
-        for (int j = 0; j < 2; j++)
+        for (int j = 0; j < 8; j++)
         {
             if (!((i + j) % 2))
                 color("green");

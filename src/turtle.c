@@ -20,7 +20,7 @@ static void init(void);
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 static void CreateCanvas(void);
 static void cleanup(void);
-static void PostCommand(Command *cmdQueue, Command command, int *nCmd, int *maxCmd);
+static void PostCommand(Command command);
 static void LinesToPolygon(void);
 static void ExecuteCommands(void);
 static void __move(void *params);
@@ -99,7 +99,7 @@ static void init(void)
     MoveParams *initMove = malloc(sizeof (MoveParams));
     initMove->dest = (POINT) {0, 0};
     initMove->pendown = false;
-    PostCommand(t->cmdQueue, (Command) {__move, initMove}, &t->nCmd, &t->maxCmd);
+    PostCommand((Command) {__move, initMove});
 }
 
 static void CreateCanvas(void)
@@ -205,22 +205,22 @@ static void cleanup(void)
     t = NULL;
 }
 
-static void PostCommand(Command *cmdQueue, Command command, int *nCmd, int *maxCmd)
+static void PostCommand(Command command)
 {
-    if (!cmdQueue || !nCmd || !maxCmd)
+    if (!t || !t->cmdQueue)
        return;
 
-    if (*nCmd == *maxCmd)
+    if (t->nCmd == t->maxCmd)
     {
-        *maxCmd *= 2;
-        Command *temp = realloc(cmdQueue, *maxCmd * sizeof (Command));
+        t->maxCmd *= 2;
+        Command *temp = realloc(t->cmdQueue, t->maxCmd * sizeof (Command));
         if (!temp)
             return;
 
-        cmdQueue = temp;
+        t->cmdQueue = temp;
     }
     
-    cmdQueue[(*nCmd)++] = command;
+    t->cmdQueue[t->nCmd++] = command;
 }
 
 static void LinesToPolygon(void)
@@ -238,7 +238,17 @@ static void LinesToPolygon(void)
 
     for (int i = 0; i < t->nCmd; i++)
     {
-        PostCommand(cmdQueue, t->cmdQueue[i], &nCmd, &maxCmd);
+        if (nCmd == maxCmd)
+        {
+            maxCmd *= 2;
+            Command *temp = realloc(cmdQueue, maxCmd * sizeof (Command));
+            if (!temp)
+                return;
+
+            cmdQueue = temp;
+        } 
+        cmdQueue[nCmd++] = t->cmdQueue[i];
+
         // check if this position is repeaated
         if (t->cmdQueue[i].cmd == __move)
         {
@@ -292,7 +302,16 @@ static void LinesToPolygon(void)
                     polygonParams->fillcolor = temp->fillcolor;
                 }
 
-                PostCommand(cmdQueue, (Command) {__polygon, polygonParams}, &nCmd, &maxCmd);
+                if (nCmd == maxCmd)
+                {
+                    maxCmd *= 2;
+                    Command *temp = realloc(cmdQueue, maxCmd * sizeof (Command));
+                    if (!temp)
+                    return;
+
+                    cmdQueue = temp;
+                } 
+                cmdQueue[nCmd++] = (Command) {__polygon, polygonParams};
             }
         }
     }
@@ -411,7 +430,7 @@ void forward(int distance)
     moveParams->pendown = t->pendown;
     moveParams->fill = t->fill;
     
-    PostCommand(t->cmdQueue, (Command) {__move, moveParams}, &t->nCmd, &t->maxCmd);
+    PostCommand((Command) {__move, moveParams});
 
     t->pos = moveParams->dest;
 }
@@ -454,7 +473,7 @@ void setpos(int x, int y)
     moveParams->pendown = t->pendown;
     moveParams->fill = t->fill;
     
-    PostCommand(t->cmdQueue, (Command) {__move, moveParams}, &t->nCmd, &t->maxCmd);
+    PostCommand((Command) {__move, moveParams});
 
     t->pos = moveParams->dest;
 }
@@ -610,7 +629,7 @@ void circle(int r)
     circleParams->pendown = t->pendown;
     circleParams->fill = t->fill;
 
-    PostCommand(t->cmdQueue, (Command) {__circle, circleParams}, &t->nCmd, &t->maxCmd);
+    PostCommand((Command) {__circle, circleParams});
 }
 
 void pos(Position *position)
