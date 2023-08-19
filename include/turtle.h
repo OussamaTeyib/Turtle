@@ -5,6 +5,10 @@
 extern "C" {
 #endif
 
+typedef struct {
+    int x, y;
+} Position;
+ 
 void show(void);
 void forward(int distance);
 void left(double angle);
@@ -21,6 +25,8 @@ void end_fill(void);
 void color(const char *color);
 void pencolor(const char *color);
 void fillcolor(const char *color);
+void pos(Position *position);
+double heading(void);
 
 #define fd(distance) forward(distance)
 #define goto(x, y) setpos(x, y)

@@ -1,0 +1,35 @@
+#ifndef TURTLE_COLORS_H
+#define TURTLE_COLORS_H
+
+enum color {
+    WHITE = RGB(255, 255, 255),
+    WHITE_SMOKE = RGB(245, 245, 245),
+    GAINSBORO = RGB(220, 220, 220),
+    LIGHT_GRAY = RGB(211, 211, 211),
+    SILVER = RGB(192, 192, 192),
+    DARK_GRAY = RGB(169, 169, 169),
+    GRAY = RGB(128, 128, 128),
+    DIM_GRAY = RGB(105, 105, 105),
+    BLACK = RGB(0, 0, 0),
+    LIGHT_SLATE_GRAY = RGB(119, 136, 153),
+    SLATE_GRAY = RGB(112, 128, 144),
+    ALICE_BLUE = RGB(240, 248, 255),
+    BLUE = RGB(0, 0, 255),
+    CYAN = RGB(0, 255, 255),
+    TURQUOISE = RGB(64, 224, 208),
+    GREEN = RGB(0, 128, 0),
+    YELLOW = RGB(255, 255, 0),
+    GOLD = RGB(255, 215, 0),
+    ORANGE = RGB(255, 165, 0),
+    CHOCOLATE = RGB(210, 105, 30),
+    BROWN = RGB(165, 42, 42),
+    MAROON = RGB(128, 0, 0),
+    RED = RGB(255, 0, 0),
+    PINK = RGB(255, 192, 203),
+    PURPLE = RGB(128, 0, 128),
+    VIOLET = RGB(238, 130, 238),
+    MAGENTA = RGB(255, 0, 255),
+    INDIGO = RGB(75, 0, 130),
+};
+
+#endif
