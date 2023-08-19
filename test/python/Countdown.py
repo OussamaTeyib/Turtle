@@ -32,13 +32,13 @@ n = 7
 def watch():
 	for i in range(n, -1, -1):
 		width(5)
+		color('white')
 		goto(140 * cos(i * pi / 30), 140 * sin(i * pi / 30))
 		hideturtle()
 		sleep(1)
 		if i:
 			color('black')
 		goto(0, 0)
-		color('white')
 	
 # driver code	
 watch()
