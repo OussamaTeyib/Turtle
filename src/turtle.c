@@ -1,10 +1,11 @@
 // to use M_PI
 #define _USE_MATH_DEFINES
 
-#include <turtle.h>
 #include <windows.h>
 #include <math.h>
 #include <stdbool.h>
+#include <turtle.h>
+#include <turtle_colors.h>
 
 #define MAX_CMDS 100
 
@@ -26,16 +27,6 @@ static void __move(void *params);
 static void __polygon(void *params);
 static void __circle(void *params);
 static COLORREF GetColor(const char *szColor);
-
-enum color {
-    WHITE = RGB(255, 255, 255),
-    BLACK = RGB(0, 0, 0),
-    GREY = RGB(128, 128, 128),
-    RED = RGB(255, 0, 0),
-    GREEN = RGB(0, 255, 0),
-    BLUE = RGB(0, 0, 255),
-    YELLOW = RGB(255, 255, 0),
-};
 
 typedef struct {
     HWND hwnd;
@@ -487,22 +478,46 @@ void width(int width)
 
 static COLORREF GetColor(const char *szColor)
 {
-    // handle all chars cases
- 
-    if (!strncmp(szColor, "white", 5))
+    if (!strncmp(szColor, "white", strlen("white")))
         return WHITE;
-    else if (!strncmp(szColor, "black", 5))
+    else if (!strncmp(szColor, "silver", strlen("silver")))
+        return SILVER;
+    else if (!strncmp(szColor, "gray", strlen("gray")) || !strncmp(szColor, "grey", strlen("grey")))
+        return GRAY;
+    else if (!strncmp(szColor, "black", strlen("black")))
         return BLACK;
-    else if (!strncmp(szColor, "grey", 4))
-        return GREY;
-    else if (!strncmp(szColor, "red", 3))
-        return RED;
-    else if (!strncmp(szColor, "green", 5))
-        return GREEN;
-    else if (!strncmp(szColor, "blue", 4))
+    else if (!strncmp(szColor, "blue", strlen("blue")))
         return BLUE;
-    else if (!strncmp(szColor, "yellow", 6))
+    else if (!strncmp(szColor, "cyan", strlen("cyan")))
+        return CYAN;
+    else if (!strncmp(szColor, "turquoise", strlen("turquoise")))
+        return TURQUOISE;
+    else if (!strncmp(szColor, "green", strlen("green")))
+        return GREEN;
+    else if (!strncmp(szColor, "yellow", strlen("yellow")))
         return YELLOW;
+    else if (!strncmp(szColor, "gold", strlen("gold")))
+        return GOLD;
+    else if (!strncmp(szColor, "orange", strlen("orange")))
+        return ORANGE;
+    else if (!strncmp(szColor, "chocolate", strlen("chocolate")))
+        return CHOCOLATE;
+    else if (!strncmp(szColor, "brown", strlen("brown")))
+        return BROWN;
+    else if (!strncmp(szColor, "maroon", strlen("maroon")))
+        return MAROON;
+    else if (!strncmp(szColor, "red", strlen("red")))
+        return RED;
+    else if (!strncmp(szColor, "pink", strlen("pink")))
+        return PINK;
+    else if (!strncmp(szColor, "purple", strlen("purple")))
+        return PURPLE;
+    else if (!strncmp(szColor, "violet", strlen("violet")))
+        return VIOLET;
+    else if (!strncmp(szColor, "magenta", strlen("magenta")))
+        return MAGENTA;
+    else if (!strncmp(szColor, "indigo", strlen("indigo")))
+        return INDIGO;
     else
         return -1;
 }
@@ -584,7 +599,7 @@ void end_fill(void)
 void circle(int r)
 {
     if (!t)
-       init();
+        init();
 
     CircleParams *circleParams = malloc(sizeof (CircleParams));
     circleParams->pos = t->pos;
@@ -596,4 +611,23 @@ void circle(int r)
     circleParams->fill = t->fill;
 
     PostCommand(t->cmdQueue, (Command) {__circle, circleParams}, &t->nCmd, &t->maxCmd);
+}
+
+void pos(Position *position)
+{
+    if (!position)
+        return;
+
+    if (!t)
+        init();
+
+    *position = (Position) {t->pos.x, t->pos.y};
+}
+
+double heading(void)
+{
+    if (!t)
+        init();
+
+    return t->angle;
 }
