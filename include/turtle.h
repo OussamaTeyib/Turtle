@@ -11,6 +11,7 @@ typedef struct {
  
 void show(void);
 void forward(int distance);
+void backward(int distance);
 void left(double angle);
 void right(double angle);
 void setheading(double angle);
@@ -29,6 +30,8 @@ void pos(Position *position);
 double heading(void);
 
 #define fd(distance) forward(distance)
+#define bk(distance) backward(distance)
+#define back(distance) backward(distance)
 #define goto(x, y) setpos(x, y)
 #define setposition(x, y) setpos(x, y)
 #define seth(angle) setheading(angle)
@@ -36,6 +39,9 @@ double heading(void);
 #define pu() penup()
 #define down() pendown()
 #define pd() pendown()
+
+// #define pensize(width) width(width)
+// #define position(p) pos(p)
 
 #ifdef __cplusplus
 }

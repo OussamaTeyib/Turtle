@@ -435,6 +435,29 @@ void forward(int distance)
     t->pos = moveParams->dest;
 }
 
+void backward(int distance)
+{
+    if (!t)
+        init();
+
+    MoveParams *moveParams = malloc(sizeof (MoveParams));
+
+    double alpha = (t->angle + 180) * M_PI / 180.0; // in radians
+
+    moveParams->dest.x = round(t->pos.x + distance * cos(alpha));
+    moveParams->dest.y = round(t->pos.y + distance * sin(alpha));
+
+    moveParams->penwidth = t->penwidth;
+    moveParams->pencolor = t->pencolor;
+    moveParams->fillcolor = t->fillcolor;
+    moveParams->pendown = t->pendown;
+    moveParams->fill = t->fill;
+    
+    PostCommand((Command) {__move, moveParams});
+
+    t->pos = moveParams->dest;
+}
+
 void left(double angle)
 {
     if (!t)
