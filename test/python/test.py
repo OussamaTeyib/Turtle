@@ -1,5 +1,6 @@
 from turtle import *
 
-done()
+bk(200)
+color('green')
 fd(100)
 done()
