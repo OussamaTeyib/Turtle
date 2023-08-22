@@ -1,5 +1,3 @@
-#define _USE_MATH_DEFINES
-
 #include <turtle.h>
 #include <math.h>
 #include <stdlib.h>
@@ -43,15 +41,16 @@ int main(int argc, char *argv[])
     {
         width(5);
         color("black");
-        goto(140 * cos(i * M_PI / 30), 140 * sin(i * M_PI /30));
+        goto(140 * cos(i * M_PI / 30), 140 * sin(i * M_PI / 30));
         // hideturtle();
         goto(0, 0);
     }
 
+    int n = 10; // default
     if (argc > 1)
-    {
-        watch(atoi(argv[1]));
-    }
+        n = atoi(argv[1]);
+
+    watch(n);
 
     show();
     return 0;
