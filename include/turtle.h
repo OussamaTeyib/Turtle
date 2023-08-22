@@ -12,11 +12,13 @@ typedef struct {
 void show(void);
 void forward(int distance);
 void backward(int distance);
+void setpos(int x, int y);
+void home(void);
+void degrees(void);
+void radians(void);
 void left(double angle);
 void right(double angle);
 void setheading(double angle);
-void setpos(int x, int y);
-void home(void);
 void circle(int r);
 void width(int width);
 void penup(void);

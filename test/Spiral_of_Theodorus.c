@@ -1,4 +1,3 @@
-#define _USE_MATH_DEFINES
 #include <turtle.h>
 #include <math.h>
 

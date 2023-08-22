@@ -1,6 +1,3 @@
-// to use M_PI
-#define _USE_MATH_DEFINES
-
 #include <windows.h>
 #include <math.h>
 #include <stdbool.h>
@@ -26,6 +23,8 @@ static void ExecuteCommands(void);
 static void __move(void *params);
 static void __polygon(void *params);
 static void __circle(void *params);
+static double toDegrees(double angle);
+static double toRadians(double angle);
 static COLORREF GetColor(const char *szColor);
 
 typedef struct {
@@ -33,6 +32,7 @@ typedef struct {
     HDC hdc;
     POINT pos;
     double angle;
+    bool isInDegrees;
     int penwidth;
     COLORREF pencolor;
     COLORREF fillcolor;
@@ -83,6 +83,7 @@ static void init(void)
     t->hdc = NULL;
     t->pos = (POINT) {0, 0};
     t->angle = 0.0;
+    t->isInDegrees = true;
     t->penwidth = 1;
     t->pencolor = BLACK;
     t->fillcolor = BLACK;
@@ -419,7 +420,7 @@ void forward(int distance)
 
     MoveParams *moveParams = malloc(sizeof (MoveParams));
 
-    double alpha = t->angle * M_PI / 180.0; // in radians
+    double alpha = t->isInDegrees? toRadians(t->angle): t->angle;
 
     moveParams->dest.x = round(t->pos.x + distance * cos(alpha));
     moveParams->dest.y = round(t->pos.y + distance * sin(alpha));
@@ -442,7 +443,11 @@ void backward(int distance)
 
     MoveParams *moveParams = malloc(sizeof (MoveParams));
 
-    double alpha = (t->angle + 180) * M_PI / 180.0; // in radians
+    double alpha;
+    if (t->isInDegrees)
+        alpha = toRadians(t->angle + 180.0);
+    else
+        alpha = t->angle + M_PI;
 
     moveParams->dest.x = round(t->pos.x + distance * cos(alpha));
     moveParams->dest.y = round(t->pos.y + distance * sin(alpha));
@@ -456,30 +461,6 @@ void backward(int distance)
     PostCommand((Command) {__move, moveParams});
 
     t->pos = moveParams->dest;
-}
-
-void left(double angle)
-{
-    if (!t)
-        init();
-
-    t->angle += angle;
-}
-
-void right(double angle)
-{   
-    if (!t)
-        init();
-
-    t->angle -= angle;
-}
-
-void setheading(double angle)
-{
-    if (!t)
-        init();
-
-    t->angle = angle;
 }
 
 void setpos(int x, int y)
@@ -508,6 +489,64 @@ void home(void)
 
     setpos(0, 0);
     setheading(0.0);
+}
+
+static double toDegrees(double angle)
+{
+    return angle / M_PI * 180.0; 
+}
+
+static double toRadians(double angle)
+{
+    return angle / 180.0 * M_PI; 
+}
+
+void degrees(void)
+{
+    if (!t)
+        init();
+
+    if (!t->isInDegrees)
+    {
+        t->isInDegrees = true;
+        t->angle = toDegrees(t->angle);
+    }
+}
+
+void radians(void)
+{
+    if (!t)
+        init();
+
+    if (t->isInDegrees)
+    {
+        t->isInDegrees = false;
+        t->angle = toRadians(t->angle);
+    }
+}
+
+void left(double angle)
+{
+    if (!t)
+        init();
+
+    t->angle += angle;
+}
+
+void right(double angle)
+{   
+    if (!t)
+        init();
+
+    t->angle -= angle;
+}
+
+void setheading(double angle)
+{
+    if (!t)
+        init();
+
+    t->angle = angle;
 }
 
 void width(int width)
