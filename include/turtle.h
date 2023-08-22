@@ -16,6 +16,7 @@ void setpos(int x, int y);
 void home(void);
 void degrees(void);
 void radians(void);
+void fullcircle(double units);
 void left(double angle);
 void right(double angle);
 void setheading(double angle);
