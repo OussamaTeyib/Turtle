@@ -9,8 +9,8 @@ int main(void)
     fd(100);
     left(M_PI / 2);
     fd(100);
-    degrees();
-    left(90);
+    fullcircle(400);
+    left(100);
     fd(100);
     show();
     return 0;

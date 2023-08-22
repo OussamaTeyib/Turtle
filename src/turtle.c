@@ -23,8 +23,6 @@ static void ExecuteCommands(void);
 static void __move(void *params);
 static void __polygon(void *params);
 static void __circle(void *params);
-static double toDegrees(double angle);
-static double toRadians(double angle);
 static COLORREF GetColor(const char *szColor);
 
 typedef struct {
@@ -32,7 +30,7 @@ typedef struct {
     HDC hdc;
     POINT pos;
     double angle;
-    bool isInDegrees;
+    double fullcircle;
     int penwidth;
     COLORREF pencolor;
     COLORREF fillcolor;
@@ -83,7 +81,7 @@ static void init(void)
     t->hdc = NULL;
     t->pos = (POINT) {0, 0};
     t->angle = 0.0;
-    t->isInDegrees = true;
+    t->fullcircle = 360.0;
     t->penwidth = 1;
     t->pencolor = BLACK;
     t->fillcolor = BLACK;
@@ -420,7 +418,7 @@ void forward(int distance)
 
     MoveParams *moveParams = malloc(sizeof (MoveParams));
 
-    double alpha = t->isInDegrees? toRadians(t->angle): t->angle;
+    double alpha = t->angle / t->fullcircle * 2 * M_PI;
 
     moveParams->dest.x = round(t->pos.x + distance * cos(alpha));
     moveParams->dest.y = round(t->pos.y + distance * sin(alpha));
@@ -443,11 +441,7 @@ void backward(int distance)
 
     MoveParams *moveParams = malloc(sizeof (MoveParams));
 
-    double alpha;
-    if (t->isInDegrees)
-        alpha = toRadians(t->angle + 180.0);
-    else
-        alpha = t->angle + M_PI;
+    double alpha = (t->angle + t->fullcircle / 2) / t->fullcircle * 2 * M_PI;
 
     moveParams->dest.x = round(t->pos.x + distance * cos(alpha));
     moveParams->dest.y = round(t->pos.y + distance * sin(alpha));
@@ -491,26 +485,13 @@ void home(void)
     setheading(0.0);
 }
 
-static double toDegrees(double angle)
-{
-    return angle / M_PI * 180.0; 
-}
-
-static double toRadians(double angle)
-{
-    return angle / 180.0 * M_PI; 
-}
-
 void degrees(void)
 {
     if (!t)
         init();
 
-    if (!t->isInDegrees)
-    {
-        t->isInDegrees = true;
-        t->angle = toDegrees(t->angle);
-    }
+    t->angle = t->angle / t->fullcircle * 360.0;
+    t->fullcircle = 360.0;
 }
 
 void radians(void)
@@ -518,11 +499,17 @@ void radians(void)
     if (!t)
         init();
 
-    if (t->isInDegrees)
-    {
-        t->isInDegrees = false;
-        t->angle = toRadians(t->angle);
-    }
+    t->angle = t->angle / t->fullcircle * 2 * M_PI;
+    t->fullcircle = 2 * M_PI;
+}
+
+void fullcircle(double units)
+{
+    if (!t)
+        init();
+
+    t->angle = t->angle / t->fullcircle * units;
+    t->fullcircle = units;
 }
 
 void left(double angle)
