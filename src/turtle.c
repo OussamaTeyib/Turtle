@@ -60,8 +60,7 @@ typedef struct
 } PolygonParams;
 
 typedef struct {
-    POINT pos;
-    int r;
+    RECT rect;
     int penwidth;
     COLORREF pencolor;
     COLORREF fillcolor;
@@ -378,12 +377,6 @@ static void __circle(void *params)
 {
     CircleParams *circleParams = (CircleParams *) params;
 
-    RECT rect;
-    rect.left = circleParams->pos.x - circleParams->r;
-    rect.top = circleParams->pos.y + 2 * circleParams->r;
-    rect.right = circleParams->pos.x + circleParams->r;
-    rect.bottom = circleParams->pos.y;
-
     HPEN hPen, hPrevPen;
     if (circleParams->pendown)
         hPen = CreatePen(PS_SOLID, circleParams->penwidth, circleParams->pencolor);
@@ -399,7 +392,7 @@ static void __circle(void *params)
     hPrevPen = SelectObject(t->hdc, hPen);
     hPrevBrush = SelectObject(t->hdc, hBrush);
 
-    Ellipse(t->hdc, rect.left, rect.top, rect.right, rect.bottom);
+    Ellipse(t->hdc, circleParams->rect.left, circleParams->rect.top, circleParams->rect.right, circleParams->rect.bottom);
 
     SelectObject(t->hdc, hPrevPen);
     if (circleParams->pendown)
@@ -416,6 +409,8 @@ void forward(int distance)
         init();
 
     MoveParams *moveParams = malloc(sizeof (MoveParams));
+    if (!moveParams)
+        return;
 
     double alpha = t->angle / t->fullcircle * 2 * M_PI;
 
@@ -439,6 +434,8 @@ void backward(int distance)
         init();
 
     MoveParams *moveParams = malloc(sizeof (MoveParams));
+    if (!moveParams)
+        return;
 
     double alpha = (t->angle + t->fullcircle / 2) / t->fullcircle * 2 * M_PI;
 
@@ -462,6 +459,8 @@ void setpos(int x, int y)
         init();
 
     MoveParams *moveParams = malloc(sizeof (MoveParams));
+    if (!moveParams)
+        return;
  
     moveParams->dest = (POINT) {x, y};
     moveParams->penwidth = t->penwidth;
@@ -659,9 +658,21 @@ void circle(int r)
     if (!t)
         init();
 
+    double alpha = t->angle / t->fullcircle * 2 * M_PI;
+
+    POINT centre;
+    centre.x = -r * sin(alpha) + t->pos.x;
+    centre.y = r * cos(alpha) + t->pos.y;
+     
     CircleParams *circleParams = malloc(sizeof (CircleParams));
-    circleParams->pos = t->pos;
-    circleParams->r = r;
+    if (!circleParams)
+        return;
+
+    circleParams->rect.left = centre.x - r;
+    circleParams->rect.top = centre.y + r;
+    circleParams->rect.right = centre.x + r;
+    circleParams->rect.bottom = centre.y - r;
+
     circleParams->penwidth = t->penwidth;
     circleParams->pencolor = t->pencolor;
     circleParams->fillcolor = t->fillcolor;

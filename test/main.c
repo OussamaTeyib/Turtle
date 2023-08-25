@@ -4,9 +4,14 @@
 int main(void)
 {
     color("red");
-    back(100);
-    right(90);
-    back(100);
+    fd(100);
+    seth(90);
+    fd(50);
+    bk(50);
+    seth(120);
+    circle(50);
+    left(90);
+    fd(50);
     show();
     return 0;
 }
