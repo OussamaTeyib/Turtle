@@ -3,15 +3,10 @@
 
 int main(void)
 {
-    fd(100);
-    left(90);
-    radians();
-    fd(100);
-    left(M_PI / 2);
-    fd(100);
-    fullcircle(400);
-    left(100);
-    fd(100);
+    color("red");
+    back(100);
+    right(90);
+    back(100);
     show();
     return 0;
 }
