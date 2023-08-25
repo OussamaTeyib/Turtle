@@ -229,7 +229,7 @@ static void LinesToPolygon(void)
        return;
 
     int maxCmd = t->maxCmd;
-    Command *cmdQueue = calloc(maxCmd, sizeof (Command)); // to be dynamically changed
+    Command *cmdQueue = calloc(maxCmd, sizeof (Command));
     if (!cmdQueue)
        return;
 
@@ -327,7 +327,6 @@ static void ExecuteCommands(void)
     {
          Command command = t->cmdQueue[i];
          command.cmd(command.params);
-         // Sleep(200);
     }
 }
 
@@ -522,10 +521,7 @@ void left(double angle)
 
 void right(double angle)
 {   
-    if (!t)
-        init();
-
-    t->angle -= angle;
+    left(-angle);
 }
 
 void setheading(double angle)
@@ -592,12 +588,6 @@ static COLORREF GetColor(const char *szColor)
 
 void color(const char *szColor)
 {
-    if (!szColor)
-        return;
-
-    if (!t)
-        init();
-
     pencolor(szColor);
     fillcolor(szColor); 
 }

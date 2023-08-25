@@ -5,21 +5,18 @@ char *colors[17] = {"gray", "green", "brown", "silver", "blue", "maroon", "turqu
 
 int main(void)
 {
-    int base = 50, height = 50;
-    fd(base);
+    int distance = 50;
     double angle = 0.0;
 
-    for (int i = 1; i <= 17; i++)
+    for (int i = 0; i < 17; i++)
     {
-        color(colors[(i - 1) % 17]);
-        begin_fill();
-        left(90);
-        forward(height);
+        color(colors[i % 17]);
 
-        Position newPos;
-        pos(&newPos);
+        begin_fill();
+        fd(distance * sqrt(i + 1));
+        left(90);
+        forward(distance);
         goto(0, 0);
-        goto(newPos.x, newPos.y);
         end_fill();
 
         angle += atan(1 / sqrt(i + 1)) / (2 * M_PI) * 360;
