@@ -2,16 +2,6 @@
 #include <complex.h>
 #include <turtle.h>
 
-double complex expo(double complex x)
-{
-    double complex e = 1.0;
-    for (int i = 1; i < 30; i++)
-    {
-        e += cpow(x, i) / tgamma(i + 1);
-    }
-    return e;
-}
-
 double rd(double i)
 {
     return 100 * (1 - cos(i) * sin(3 * i));
@@ -24,9 +14,7 @@ int main(void)
 
     double teta[100];
     for (int i = 0; i < 100; i++)
-    {
         teta[i] = i * 2 * M_PI / 99;
-    }
 
     up();
     goto(100, 0);
@@ -35,7 +23,7 @@ int main(void)
     for (int i = 1; i < 100; i++)
     {
         double r = rd(teta[i]);
-        double complex z = r * expo(teta[i] * I);
+        double complex z = r * cexp(teta[i] * I);
         double x = creal(z);
         double y = cimag(z);
         goto(x, y);
@@ -49,7 +37,7 @@ int main(void)
     for (int i = 0; i < 100; i++)
     {
         double r = rd(teta[i]);
-        double complex z = r * expo(teta[i] * I);
+        double complex z = r * cexp(teta[i] * I);
         double x = creal(z);
         double y = cimag(z);
         color(col[n % 3]);

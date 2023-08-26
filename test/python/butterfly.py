@@ -1,20 +1,14 @@
 from turtle import *
 from math import cos, pi, factorial, sin
+from cmath import exp
 # import numpy as np
 
 speed(0)
 width(4)
 color('red')
 
-def exp(x):
-	e = 1
-	for i in range(1, 30):
-		e += x ** i / factorial(i)
-	return e
-
 # teta = [i for i in np.linspace(0,2 * pi, 100)]
 teta = [i * 2 * pi / 99 for i in range(100)]
-
 
 def rd(i):
 	r = 100 * (1 - cos(i) * sin(3 * i))
