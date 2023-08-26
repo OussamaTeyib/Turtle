@@ -8,7 +8,7 @@ int main(void)
     seth(90);
     fd(50);
     bk(50);
-    seth(120);
+    seth(270);
     circle(50);
     left(90);
     fd(50);
