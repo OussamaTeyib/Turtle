@@ -1,22 +1,24 @@
 from turtle import *
 
-speed(100)
+speed(0)
 	
-for i in range (8):
+for i in range(8):
 	up()
-	goto (-320, -320+80*i)
+	goto(-200, -200 + 50 * i)
 	down()
-	for j in range (8):
+	for j in range(8):
 		if not (i + j) % 2:
-			color ('black')
+			color('black')
 		else:
-			color ('brown')
-		begin_fill()
-		for k in range (4):
-			forward (80)
+			color('brown')
+
+		# begin_fill()
+		for k in range(4):
+			forward(50)
 			left(90)
-		forward (80)
-		end_fill()
+
+		# end_fill()
+		forward(50)
 
 hideturtle()
 mainloop()

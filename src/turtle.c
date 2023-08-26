@@ -221,6 +221,15 @@ static void PostCommand(Command command)
     t->cmdQueue[t->nCmd++] = command;
 }
 
+static void ExecuteCommands(void)
+{
+    for (int i = 0; i < t->nCmd; i++)
+    {
+         Command command = t->cmdQueue[i];
+         command.cmd(command.params);
+    }
+}
+
 static void LinesToPolygon(void)
 {
     // skip if there is only the initial move in the cmdQueue
@@ -318,15 +327,6 @@ static void LinesToPolygon(void)
     t->cmdQueue = cmdQueue;
     t->nCmd = nCmd;
     t->maxCmd = maxCmd;
-}
-
-static void ExecuteCommands(void)
-{
-    for (int i = 0; i < t->nCmd; i++)
-    {
-         Command command = t->cmdQueue[i];
-         command.cmd(command.params);
-    }
 }
 
 static void __move(void *params)
@@ -476,9 +476,6 @@ void setpos(int x, int y)
 
 void home(void)
 {
-    if (!t)
-        init();
-
     setpos(0, 0);
     setheading(0.0);
 }
