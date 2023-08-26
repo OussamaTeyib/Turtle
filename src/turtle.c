@@ -54,7 +54,7 @@ typedef struct
 typedef struct
 { 
     POINT *apt;
-    int count;
+    int nPts;
     COLORREF fillcolor;
     bool fill;
 } PolygonParams;
@@ -274,27 +274,27 @@ static void LinesToPolygon(void)
                 if (!polygonParams)
                     return;
 
-                polygonParams->count = 0;
+                polygonParams->nPts = 0;
                 for (int k = index; k <= i; k++)
                 {
                     if (t->cmdQueue[k].cmd != __move)
                         continue;
 
-                    polygonParams->count++;
+                    polygonParams->nPts++;
                 } 
 
-                polygonParams->apt = calloc(polygonParams->count, sizeof (POINT));
+                polygonParams->apt = calloc(polygonParams->nPts, sizeof (POINT));
                 if (!polygonParams->apt)
                     return;
 
-                for (int k = index, aptCount = 0; k <= i; k++)
+                for (int k = index, aptCounter = 0; k <= i; k++)
                 {
                     if (t->cmdQueue[k].cmd != __move)
                         continue;
 
                     MoveParams *temp = (MoveParams *) t->cmdQueue[k].params;
 
-                    polygonParams->apt[aptCount++] = temp->dest;
+                    polygonParams->apt[aptCounter++] = temp->dest;
                     // Get filling info from the last line
                     polygonParams->fill = temp->fill;
                     polygonParams->fillcolor = temp->fillcolor;
@@ -364,7 +364,7 @@ static void __polygon(void *params)
     SelectObject(t->hdc, GetStockObject(NULL_PEN));
     SetPolyFillMode(t->hdc, WINDING);
 
-    Polygon(t->hdc, polygonParams->apt, polygonParams->count);
+    Polygon(t->hdc, polygonParams->apt, polygonParams->nPts);
 
     // deselect hBrush before deleting it
     SelectObject(t->hdc, hPrevBrush);
@@ -483,22 +483,43 @@ void home(void)
     setheading(0.0);
 }
 
-void degrees(void)
+void circle(int r)
 {
     if (!t)
         init();
 
-    t->angle = t->angle / t->fullcircle * 360.0;
-    t->fullcircle = 360.0;
+    double alpha = t->angle / t->fullcircle * 2 * M_PI;
+
+    POINT centre;
+    centre.x = round(t->pos.x - r * sin(alpha));
+    centre.y = round(t->pos.y + r * cos(alpha));
+     
+    CircleParams *circleParams = malloc(sizeof (CircleParams));
+    if (!circleParams)
+        return;
+
+    circleParams->rect.left = centre.x - r;
+    circleParams->rect.top = centre.y + r;
+    circleParams->rect.right = centre.x + r;
+    circleParams->rect.bottom = centre.y - r;
+
+    circleParams->penwidth = t->penwidth;
+    circleParams->pencolor = t->pencolor;
+    circleParams->fillcolor = t->fillcolor;
+    circleParams->pendown = t->pendown;
+    circleParams->fill = t->fill;
+
+    PostCommand((Command) {__circle, circleParams});
+}
+
+void degrees(void)
+{
+    fullcircle(360.0);
 }
 
 void radians(void)
 {
-    if (!t)
-        init();
-
-    t->angle = t->angle / t->fullcircle * 2 * M_PI;
-    t->fullcircle = 2 * M_PI;
+    fullcircle(2 * M_PI);
 }
 
 void fullcircle(double units)
@@ -651,35 +672,6 @@ void end_fill(void)
         init();
 
      t->fill = false;
-}
-
-void circle(int r)
-{
-    if (!t)
-        init();
-
-    double alpha = t->angle / t->fullcircle * 2 * M_PI;
-
-    POINT centre;
-    centre.x = -r * sin(alpha) + t->pos.x;
-    centre.y = r * cos(alpha) + t->pos.y;
-     
-    CircleParams *circleParams = malloc(sizeof (CircleParams));
-    if (!circleParams)
-        return;
-
-    circleParams->rect.left = centre.x - r;
-    circleParams->rect.top = centre.y + r;
-    circleParams->rect.right = centre.x + r;
-    circleParams->rect.bottom = centre.y - r;
-
-    circleParams->penwidth = t->penwidth;
-    circleParams->pencolor = t->pencolor;
-    circleParams->fillcolor = t->fillcolor;
-    circleParams->pendown = t->pendown;
-    circleParams->fill = t->fill;
-
-    PostCommand((Command) {__circle, circleParams});
 }
 
 void pos(Position *position)

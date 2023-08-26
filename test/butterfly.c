@@ -41,7 +41,7 @@ int main(void)
         goto(x, y);
     }
 
-    /* goto(100, 0);
+    goto(100, 0);
     width(1);
     const char *col[] = {"blue", "purple", "green"};
 
@@ -56,7 +56,7 @@ int main(void)
         n++;
         goto(x, y);
         goto(0, 0);
-    } */
+    }
 
     show();
     return 0;

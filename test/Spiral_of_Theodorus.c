@@ -7,6 +7,7 @@ int main(void)
 {
     int distance = 50;
     double angle = 0.0;
+    radians();
 
     for (int i = 0; i < 17; i++)
     {
@@ -14,12 +15,12 @@ int main(void)
 
         begin_fill();
         fd(distance * sqrt(i + 1));
-        left(90);
+        left(M_PI / 2);
         forward(distance);
         goto(0, 0);
         end_fill();
 
-        angle += atan(1 / sqrt(i + 1)) / (2 * M_PI) * 360;
+        angle += atan(1 / sqrt(i + 1));
         seth(angle);
     }
 
