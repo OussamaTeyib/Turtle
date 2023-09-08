@@ -487,6 +487,8 @@ void circle(int r)
 
     double alpha = t->angle / t->fullcircle * 2 * M_PI;
 
+    // Draw the circle in counterclockwise direction if 'r' is positive, otherwise in clockwise direction.
+    // In technical words, if 'r' is positive, rotate the point p(t->pos.x, t->pos.y + r), otherwise rotate the point p(t->pos.x, t->pos.y - r)
     POINT centre;
     centre.x = round(t->pos.x - r * sin(alpha));
     centre.y = round(t->pos.y + r * cos(alpha));
