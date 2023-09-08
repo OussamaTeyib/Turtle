@@ -23,6 +23,7 @@ static void ExecuteCommands(void);
 static void __move(void *params);
 static void __polygon(void *params);
 static void __circle(void *params);
+static POINT RotatePoint(POINT centre, POINT point, double alpha);
 static COLORREF GetColor(const char *szColor);
 
 typedef struct {
@@ -403,6 +404,18 @@ static void __circle(void *params)
         DeleteObject(hBrush);
 }
 
+static POINT RotatePoint(POINT centre, POINT point, double alpha)
+{
+    POINT new_point, delta;
+
+    delta.x = point.x - centre.x;
+    delta.y = point.y - centre.y;
+
+    new_point.x = centre.x + round(delta.x * cos(alpha) - delta.y * sin(alpha));
+    new_point.y = centre.y + round(delta.x * sin(alpha) + delta.y * cos(alpha));
+
+    return new_point;
+}
 void forward(int distance)
 {
     if (!t)
@@ -414,8 +427,7 @@ void forward(int distance)
 
     double alpha = t->angle / t->fullcircle * 2 * M_PI;
 
-    moveParams->dest.x = round(t->pos.x + distance * cos(alpha));
-    moveParams->dest.y = round(t->pos.y + distance * sin(alpha));
+    moveParams->dest = RotatePoint(t->pos, (POINT) {t->pos.x + distance, t->pos.y}, alpha);
 
     moveParams->penwidth = t->penwidth;
     moveParams->pencolor = t->pencolor;
@@ -439,8 +451,7 @@ void backward(int distance)
 
     double alpha = (t->angle + t->fullcircle / 2) / t->fullcircle * 2 * M_PI;
 
-    moveParams->dest.x = round(t->pos.x + distance * cos(alpha));
-    moveParams->dest.y = round(t->pos.y + distance * sin(alpha));
+    moveParams->dest = RotatePoint(t->pos, (POINT) {t->pos.x + distance, t->pos.y}, alpha);
 
     moveParams->penwidth = t->penwidth;
     moveParams->pencolor = t->pencolor;
@@ -488,10 +499,8 @@ void circle(int r)
     double alpha = t->angle / t->fullcircle * 2 * M_PI;
 
     // Draw the circle in counterclockwise direction if 'r' is positive, otherwise in clockwise direction.
-    // In technical words, if 'r' is positive, rotate the point p(t->pos.x, t->pos.y + r), otherwise rotate the point p(t->pos.x, t->pos.y - r)
-    POINT centre;
-    centre.x = round(t->pos.x - r * sin(alpha));
-    centre.y = round(t->pos.y + r * cos(alpha));
+    // In technical words, if 'r' is positive, rotate the point p(t->pos.x, t->pos.y + abs(r)), otherwise rotate the point p(t->pos.x, t->pos.y - abs(r))
+    POINT centre = RotatePoint(t->pos, (POINT) {t->pos.x, t->pos.y + r}, alpha);
      
     CircleParams *circleParams = malloc(sizeof (CircleParams));
     if (!circleParams)
