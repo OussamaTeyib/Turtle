@@ -21,6 +21,7 @@ void left(double angle);
 void right(double angle);
 void setheading(double angle);
 void circle(int r);
+void arc(int r, double extent);
 void width(int width);
 void penup(void);
 void pendown(void);
