@@ -1,46 +1,51 @@
 from turtle import *
 
 up()
-goto (-150, -50)
+goto(-150, -100)
 down()
-color ('red')
+color('red')
 begin_fill()
-for i in range (4):
-	forward (300-100*(i%2))
+for i in range(4):
+	forward(300 - 100 * (i % 2))
 	left(90)
 end_fill()
 
-goto (-150, -20)
-color ('green')
+up()
+goto(-150, -70)
+down()
+color('green')
 begin_fill()
-for i in range(3):
-	forward (300-160*(i%2))
+for i in range(4):
+	forward(300 - 160 * (i % 2))
 	left(90)
 end_fill()
 
-goto (-50, 45)
-color ('yellow')
+up()
+goto(0, -60)
+down()
+color('yellow')
 begin_fill()
-circle (50, 180)
+circle(50)
 end_fill()
 
-right(180);
-
-goto (-50, 60)
+up()
+goto(0, -45)
+down()
+color('green')
 begin_fill()
-color ('green')
-circle (50, 180)
+circle(50)
 end_fill()
 
-setheading(0);
-goto (15, 40)
+up()
+goto(18, -5)
+down()
+color('yellow')
 left(108)
-color ('yellow')
 begin_fill()
 for i in range(5):
-	forward (60)
+	forward(60)
 	left(144)
 end_fill()
 
 hideturtle()
-mainloop()
+done()

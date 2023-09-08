@@ -5,14 +5,9 @@ int main(void)
 {
     color("red");
     
-    
-    fd(50);
-    // circle(-50);
-
-    bk(50);
-    seth(-45);
-    fd(50);    
-    circle(-50);
+    fullcircle(200);
+    arc(-50, 200);
+    fd(100);
 
     show();
     return 0;

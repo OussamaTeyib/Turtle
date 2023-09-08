@@ -22,7 +22,7 @@ static void LinesToPolygon(void);
 static void ExecuteCommands(void);
 static void __move(void *params);
 static void __polygon(void *params);
-static void __circle(void *params);
+static void __arc(void *params);
 static POINT RotatePoint(POINT centre, POINT point, double alpha);
 static COLORREF GetColor(const char *szColor);
 
@@ -62,12 +62,14 @@ typedef struct
 
 typedef struct {
     RECT rect;
+    POINT start, end;
+    bool DrawCounterclockwise;
     int penwidth;
     COLORREF pencolor;
     COLORREF fillcolor;
     bool pendown;
     bool fill;
-} CircleParams;
+} ArcParams;
 
 static Turtle *t = NULL;
 
@@ -374,33 +376,48 @@ static void __polygon(void *params)
         DeleteObject(hBrush);
 }
 
-static void __circle(void *params)
+static void __arc(void *params)
 {
-    CircleParams *circleParams = (CircleParams *) params;
+    ArcParams *arcParams = (ArcParams *) params;
 
     HPEN hPen, hPrevPen;
-    if (circleParams->pendown)
-        hPen = CreatePen(PS_SOLID, circleParams->penwidth, circleParams->pencolor);
+    if (arcParams->pendown)
+        hPen = CreatePen(PS_SOLID, arcParams->penwidth, arcParams->pencolor);
     else
         hPen = GetStockObject(NULL_PEN);
 
     HBRUSH hBrush, hPrevBrush;
-    if (circleParams->fill)
-        hBrush = CreateSolidBrush(circleParams->fillcolor);
+    if (arcParams->fill)
+        hBrush = CreateSolidBrush(arcParams->fillcolor);
     else
         hBrush = GetStockObject(NULL_BRUSH);
 
     hPrevPen = SelectObject(t->hdc, hPen);
     hPrevBrush = SelectObject(t->hdc, hBrush);
 
-    Ellipse(t->hdc, circleParams->rect.left, circleParams->rect.top, circleParams->rect.right, circleParams->rect.bottom);
+    if (!arcParams->DrawCounterclockwise)
+        SetArcDirection(t->hdc, AD_CLOCKWISE);
+
+    // if the arc forms a circle that should be filled
+    if (arcParams->fill && arcParams->start.x == arcParams->end.x && arcParams->start.y == arcParams->end.y)
+    {
+       Ellipse(t->hdc, arcParams->rect.left, arcParams->rect.top, arcParams->rect.right, arcParams->rect.bottom);
+    }
+    else
+    {
+        Arc(t->hdc, arcParams->rect.left, arcParams->rect.top, arcParams->rect.right, arcParams->rect.bottom, arcParams->start.x, arcParams->start.y, arcParams->end.x, arcParams->end.y);
+        MoveToEx(t->hdc, arcParams->end.x, arcParams->end.y, NULL);
+    }
+
+    if (!arcParams->DrawCounterclockwise)
+        SetArcDirection(t->hdc, AD_COUNTERCLOCKWISE);
 
     SelectObject(t->hdc, hPrevPen);
-    if (circleParams->pendown)
+    if (arcParams->pendown)
         DeleteObject(hPen);
 
     SelectObject(t->hdc, hPrevBrush);
-    if (circleParams->fill)
+    if (arcParams->fill)
         DeleteObject(hBrush);
 }
 
@@ -491,33 +508,47 @@ void home(void)
     setheading(0.0);
 }
 
-void circle(int r)
+void arc(int r, double extent)
 {
     if (!t)
         init();
 
     double alpha = t->angle / t->fullcircle * 2 * M_PI;
-
-    // Draw the circle in counterclockwise direction if 'r' is positive, otherwise in clockwise direction.
-    // In technical words, if 'r' is positive, rotate the point p(t->pos.x, t->pos.y + abs(r)), otherwise rotate the point p(t->pos.x, t->pos.y - abs(r))
+    // To get the centre, if 'r' is positive, rotate the (t->pos.x, t->pos.y + abs(r)), otherwise rotate the point p(t->pos.x, t->pos.y - abs(r)).
     POINT centre = RotatePoint(t->pos, (POINT) {t->pos.x, t->pos.y + r}, alpha);
      
-    CircleParams *circleParams = malloc(sizeof (CircleParams));
-    if (!circleParams)
+    double beta = extent / t->fullcircle * 2 * M_PI;
+    // Draw the arc in counterclockwise direction if 'r' is positive, otherwise in clockwise direction.
+    beta *= (r < 0)? -1: 1;  
+
+    ArcParams *arcParams = malloc(sizeof (ArcParams));
+    if (!arcParams)
         return;
 
-    circleParams->rect.left = centre.x - r;
-    circleParams->rect.top = centre.y + r;
-    circleParams->rect.right = centre.x + r;
-    circleParams->rect.bottom = centre.y - r;
+    arcParams->rect.left = centre.x - r;
+    arcParams->rect.top = centre.y + r;
+    arcParams->rect.right = centre.x + r;
+    arcParams->rect.bottom = centre.y - r;
 
-    circleParams->penwidth = t->penwidth;
-    circleParams->pencolor = t->pencolor;
-    circleParams->fillcolor = t->fillcolor;
-    circleParams->pendown = t->pendown;
-    circleParams->fill = t->fill;
+    arcParams->start = t->pos;
+    arcParams->end = RotatePoint(centre, t->pos, beta);
+    arcParams->DrawCounterclockwise = (beta >= 0)? true: false;
 
-    PostCommand((Command) {__circle, circleParams});
+    arcParams->penwidth = t->penwidth;
+    arcParams->pencolor = t->pencolor;
+    arcParams->fillcolor = t->fillcolor;
+    arcParams->pendown = t->pendown;
+    arcParams->fill = t->fill;
+
+    PostCommand((Command) {__arc, arcParams});
+
+    t->pos = arcParams->end;
+    t->angle = beta / (2 * M_PI) * t->fullcircle;
+}
+
+void circle(int r)
+{
+    arc(r, t->fullcircle);
 }
 
 void degrees(void)
