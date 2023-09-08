@@ -8,10 +8,63 @@ Turtle Graphics is a popular educational tool that introduces programming concep
 Download the latest release from [here](https://github.com/OussamaTeyib/Turtle/tree/main/release)
 
 ### Important Note:
-The library is still UNDER DEVELOPMENT.
+This library is still UNDER DEVELOPMENT.
 
 ## Usage Example
 Many samples can be found [here](https://github.com/OussamaTeyib/Turtle/tree/main/test)
+
+<table>
+<tr>
+    <td><b>C</b></td>
+    <td><b>Python</b></td>
+</tr>
+<td>
+  <pre lang = "c">
+#include &lt;turtle.h&gt;
+
+    int main(void)
+    {
+        for (int i = 0; i < 5; i++)
+        {
+            up();
+            goto(-200, -153 + (306 / 9) * i);
+            down();
+            color(!(i % 2)? "yellow": "red");
+            begin_fill();
+            for (int j = 0; j < 4; j++)
+            {
+                fd(400 - (94 + (2 * 306 / 9) * i) * (j % 2));
+                left(90);
+            } 
+            end_fill();
+        } 
+
+        show();
+        return 0;
+    }
+</pre>
+</td>
+<td>
+<pre lang="python">
+from turtle import *
+
+for i in range(5):
+    penup()
+    goto(-200, -153 + (306 / 9) * i)
+    pendown()
+    color("yellow" if not (i % 2) else "red")
+    begin_fill()
+
+    for j in range(4):
+        forward(400 - (94 + (2 * 306 / 9) * i) * (j % 2))
+        left(90)
+
+    end_fill()
+
+done()
+</pre>
+</td>
+</table>
 
 ## Credits
 This library was developped by Oussama Teyib during the summer of 2023.
