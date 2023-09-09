@@ -23,6 +23,7 @@ static void ExecuteCommands(void);
 static void __move(void *params);
 static void __polygon(void *params);
 static void __arc(void *params);
+static double NormalizeAngle(double angle);
 static POINT RotatePoint(POINT centre, POINT point, double alpha);
 static COLORREF GetColor(const char *szColor);
 
@@ -386,39 +387,43 @@ static void __arc(void *params)
     else
         hPen = GetStockObject(NULL_PEN);
 
-    HBRUSH hBrush, hPrevBrush;
-    if (arcParams->fill)
-        hBrush = CreateSolidBrush(arcParams->fillcolor);
-    else
-        hBrush = GetStockObject(NULL_BRUSH);
-
     hPrevPen = SelectObject(t->hdc, hPen);
-    hPrevBrush = SelectObject(t->hdc, hBrush);
-
-    if (!arcParams->DrawCounterclockwise)
-        SetArcDirection(t->hdc, AD_CLOCKWISE);
 
     // if the arc forms a circle that should be filled
     if (arcParams->fill && arcParams->start.x == arcParams->end.x && arcParams->start.y == arcParams->end.y)
     {
-       Ellipse(t->hdc, arcParams->rect.left, arcParams->rect.top, arcParams->rect.right, arcParams->rect.bottom);
+        HBRUSH hBrush, hPrevBrush;
+        hBrush = CreateSolidBrush(arcParams->fillcolor);
+        hPrevBrush = SelectObject(t->hdc, hBrush);
+
+        Ellipse(t->hdc, arcParams->rect.left, arcParams->rect.top, arcParams->rect.right, arcParams->rect.bottom);
+
+        SelectObject(t->hdc, hPrevBrush);
+        DeleteObject(hBrush);
     }
     else
     {
+        if (!arcParams->DrawCounterclockwise)
+            SetArcDirection(t->hdc, AD_CLOCKWISE);
+
         Arc(t->hdc, arcParams->rect.left, arcParams->rect.top, arcParams->rect.right, arcParams->rect.bottom, arcParams->start.x, arcParams->start.y, arcParams->end.x, arcParams->end.y);
         MoveToEx(t->hdc, arcParams->end.x, arcParams->end.y, NULL);
+        
+        if (!arcParams->DrawCounterclockwise)
+            SetArcDirection(t->hdc, AD_COUNTERCLOCKWISE);
     }
-
-    if (!arcParams->DrawCounterclockwise)
-        SetArcDirection(t->hdc, AD_COUNTERCLOCKWISE);
 
     SelectObject(t->hdc, hPrevPen);
     if (arcParams->pendown)
         DeleteObject(hPen);
+}
 
-    SelectObject(t->hdc, hPrevBrush);
-    if (arcParams->fill)
-        DeleteObject(hBrush);
+static double NormalizeAngle(double angle)
+{
+    double new_angle = fmod(angle, t->fullcircle);
+    if (new_angle < 0.0)
+        new_angle += t->fullcircle;
+    return new_angle;
 }
 
 static POINT RotatePoint(POINT centre, POINT point, double alpha)
@@ -518,7 +523,6 @@ void arc(int r, double extent)
     POINT centre = RotatePoint(t->pos, (POINT) {t->pos.x, t->pos.y + r}, alpha);
      
     double beta = extent / t->fullcircle * 2 * M_PI;
-    // Draw the arc in counterclockwise direction if 'r' is positive, otherwise in clockwise direction.
     beta *= (r < 0)? -1: 1;  
 
     ArcParams *arcParams = malloc(sizeof (ArcParams));
@@ -532,7 +536,8 @@ void arc(int r, double extent)
 
     arcParams->start = t->pos;
     arcParams->end = RotatePoint(centre, t->pos, beta);
-    arcParams->DrawCounterclockwise = (beta >= 0)? true: false;
+    // Draw the arc in counterclockwise direction if 'beta' is positive, otherwise in clockwise direction.
+    arcParams->DrawCounterclockwise = (beta >= 0.0)? true: false;
 
     arcParams->penwidth = t->penwidth;
     arcParams->pencolor = t->pencolor;
@@ -543,7 +548,7 @@ void arc(int r, double extent)
     PostCommand((Command) {__arc, arcParams});
 
     t->pos = arcParams->end;
-    t->angle = beta / (2 * M_PI) * t->fullcircle;
+    t->angle = NormalizeAngle(t->angle + beta / (2 * M_PI) * t->fullcircle);
 }
 
 void circle(int r)
@@ -575,7 +580,7 @@ void left(double angle)
     if (!t)
         init();
 
-    t->angle += angle;
+    t->angle = NormalizeAngle(t->angle + angle);
 }
 
 void right(double angle)
@@ -588,7 +593,7 @@ void setheading(double angle)
     if (!t)
         init();
 
-    t->angle = angle;
+    t->angle = NormalizeAngle(angle);
 }
 
 void width(int width)
