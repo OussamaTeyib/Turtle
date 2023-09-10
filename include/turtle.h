@@ -6,46 +6,56 @@ extern "C" {
 #endif
 
 typedef struct {
-    int x, y;
-} Position;
+    double x, y;
+} TurtlePosition;
  
 void show(void);
-void forward(int distance);
-void backward(int distance);
-void setpos(int x, int y);
+
+void forward(double distance);
+void backward(double distance);
+void setposition(double x, double y);
 void home(void);
+TurtlePosition position(void);
+
+void left(double angle);
+void right(double angle);
+double heading(void);
+void setheading(double to_angle);
 void degrees(void);
 void radians(void);
 void fullcircle(double units);
-void left(double angle);
-void right(double angle);
-void setheading(double angle);
-void circle(int r);
-void arc(int r, double extent);
+
+void circle(double r);
+void arc(double r, double extent);
+
 void width(int width);
 void penup(void);
 void pendown(void);
+
 void begin_fill(void);
 void end_fill(void);
+
 void color(const char *color);
 void pencolor(const char *color);
 void fillcolor(const char *color);
-void pos(Position *position);
-double heading(void);
+
 
 #define fd(distance) forward(distance)
 #define bk(distance) backward(distance)
 #define back(distance) backward(distance)
-#define goto(x, y) setpos(x, y)
-#define setposition(x, y) setpos(x, y)
-#define seth(angle) setheading(angle)
+#define goto(x, y) setposition(x, y)
+#define setpos(x, y) setposition(x, y)
+#define pos() position()
+
+#define lt(angle) left(angle)
+#define rt(angle) right(angle)
+#define seth(to_angle) setheading(to_angle)
+
 #define up() penup()
 #define pu() penup()
 #define down() pendown()
 #define pd() pendown()
-
-// #define pensize(width) width(width)
-// #define position(p) pos(p)
+#define pensize(w) width(w)
 
 #ifdef __cplusplus
 }
