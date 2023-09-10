@@ -13,6 +13,10 @@ typedef struct {
     void *params;
 } Command;
 
+typedef struct {
+    double x, y;
+} Point;
+
 static void init(void);
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 static void CreateCanvas(void);
@@ -24,13 +28,14 @@ static void __move(void *params);
 static void __polygon(void *params);
 static void __arc(void *params);
 static double NormalizeAngle(double angle);
-static POINT RotatePoint(POINT centre, POINT point, double alpha);
+static Point RotatePoint(Point centre, Point point, double alpha);
+static POINT ToStdCoord(Point pt);
 static COLORREF GetColor(const char *szColor);
 
 typedef struct {
     HWND hwnd;
     HDC hdc;
-    POINT pos;
+    Point pos;
     double angle;
     double fullcircle;
     int penwidth;
@@ -82,7 +87,7 @@ static void init(void)
 
     t->hwnd = NULL;
     t->hdc = NULL;
-    t->pos = (POINT) {0, 0};
+    t->pos = (Point) {0.0, 0.0};
     t->angle = 0.0;
     t->fullcircle = 360.0;
     t->penwidth = 1;
@@ -426,19 +431,28 @@ static double NormalizeAngle(double angle)
     return new_angle;
 }
 
-static POINT RotatePoint(POINT centre, POINT point, double alpha)
+static Point RotatePoint(Point centre, Point pt, double alpha)
 {
-    POINT new_point, delta;
+    Point new_pt, delta;
 
-    delta.x = point.x - centre.x;
-    delta.y = point.y - centre.y;
+    delta.x = pt.x - centre.x;
+    delta.y = pt.y - centre.y;
 
-    new_point.x = centre.x + round(delta.x * cos(alpha) - delta.y * sin(alpha));
-    new_point.y = centre.y + round(delta.x * sin(alpha) + delta.y * cos(alpha));
+    new_pt.x = centre.x + delta.x * cos(alpha) - delta.y * sin(alpha);
+    new_pt.y = centre.y + delta.x * sin(alpha) + delta.y * cos(alpha);
 
-    return new_point;
+    return new_pt;
 }
-void forward(int distance)
+
+static POINT ToStdCoord(Point pt)
+{
+    POINT std_pt;
+    std_pt.x = round(pt.x);
+    std_pt.y = round(pt.y);
+    return std_pt;
+}
+
+void forward(double distance)
 {
     if (!t)
         init();
@@ -448,8 +462,8 @@ void forward(int distance)
         return;
 
     double alpha = t->angle / t->fullcircle * 2 * M_PI;
-
-    moveParams->dest = RotatePoint(t->pos, (POINT) {t->pos.x + distance, t->pos.y}, alpha);
+    Point new_pos = RotatePoint(t->pos, (Point) {t->pos.x + distance, t->pos.y}, alpha);
+    moveParams->dest = ToStdCoord(new_pos);
 
     moveParams->penwidth = t->penwidth;
     moveParams->pencolor = t->pencolor;
@@ -459,10 +473,10 @@ void forward(int distance)
     
     PostCommand((Command) {__move, moveParams});
 
-    t->pos = moveParams->dest;
+    t->pos = new_pos;
 }
 
-void backward(int distance)
+void backward(double distance)
 {
     if (!t)
         init();
@@ -472,8 +486,8 @@ void backward(int distance)
         return;
 
     double alpha = (t->angle + t->fullcircle / 2) / t->fullcircle * 2 * M_PI;
-
-    moveParams->dest = RotatePoint(t->pos, (POINT) {t->pos.x + distance, t->pos.y}, alpha);
+    Point new_pos = RotatePoint(t->pos, (Point) {t->pos.x + distance, t->pos.y}, alpha);
+    moveParams->dest = ToStdCoord(new_pos);
 
     moveParams->penwidth = t->penwidth;
     moveParams->pencolor = t->pencolor;
@@ -483,10 +497,10 @@ void backward(int distance)
     
     PostCommand((Command) {__move, moveParams});
 
-    t->pos = moveParams->dest;
+    t->pos = new_pos;
 }
 
-void setpos(int x, int y)
+void setposition(double x, double y)
 {
     if (!t)
         init();
@@ -495,7 +509,7 @@ void setpos(int x, int y)
     if (!moveParams)
         return;
  
-    moveParams->dest = (POINT) {x, y};
+    moveParams->dest = ToStdCoord((Point) {x, y});
     moveParams->penwidth = t->penwidth;
     moveParams->pencolor = t->pencolor;
     moveParams->fillcolor = t->fillcolor;
@@ -504,23 +518,23 @@ void setpos(int x, int y)
     
     PostCommand((Command) {__move, moveParams});
 
-    t->pos = moveParams->dest;
+    t->pos = (Point) {x, y};
 }
 
 void home(void)
 {
-    setpos(0, 0);
+    setposition(0.0, 0.0);
     setheading(0.0);
 }
 
-void arc(int r, double extent)
+void arc(double r, double extent)
 {
     if (!t)
         init();
 
     double alpha = t->angle / t->fullcircle * 2 * M_PI;
     // To get the centre, if 'r' is positive, rotate the (t->pos.x, t->pos.y + abs(r)), otherwise rotate the point p(t->pos.x, t->pos.y - abs(r)).
-    POINT centre = RotatePoint(t->pos, (POINT) {t->pos.x, t->pos.y + r}, alpha);
+    Point centre = RotatePoint(t->pos, (Point) {t->pos.x, t->pos.y + r}, alpha);
      
     double beta = extent / t->fullcircle * 2 * M_PI;
     beta *= (r < 0)? -1: 1;  
@@ -529,13 +543,14 @@ void arc(int r, double extent)
     if (!arcParams)
         return;
 
-    arcParams->rect.left = centre.x - r;
-    arcParams->rect.top = centre.y + r;
-    arcParams->rect.right = centre.x + r;
-    arcParams->rect.bottom = centre.y - r;
+    arcParams->rect.left = round(centre.x - r);
+    arcParams->rect.top = round(centre.y + r);
+    arcParams->rect.right = round(centre.x + r);
+    arcParams->rect.bottom = round(centre.y - r);
 
-    arcParams->start = t->pos;
-    arcParams->end = RotatePoint(centre, t->pos, beta);
+    arcParams->start = ToStdCoord(t->pos);
+    Point end = RotatePoint(centre, t->pos, beta);
+    arcParams->end = ToStdCoord(end);
     // Draw the arc in counterclockwise direction if 'beta' is positive, otherwise in clockwise direction.
     arcParams->DrawCounterclockwise = (beta >= 0.0)? true: false;
 
@@ -547,11 +562,11 @@ void arc(int r, double extent)
 
     PostCommand((Command) {__arc, arcParams});
 
-    t->pos = arcParams->end;
+    t->pos = end;
     t->angle = NormalizeAngle(t->angle + beta / (2 * M_PI) * t->fullcircle);
 }
 
-void circle(int r)
+void circle(double r)
 {
     arc(r, t->fullcircle);
 }
@@ -588,12 +603,12 @@ void right(double angle)
     left(-angle);
 }
 
-void setheading(double angle)
+void setheading(double to_angle)
 {
     if (!t)
         init();
 
-    t->angle = NormalizeAngle(angle);
+    t->angle = NormalizeAngle(to_angle);
 }
 
 void width(int width)
@@ -718,15 +733,12 @@ void end_fill(void)
      t->fill = false;
 }
 
-void pos(Position *position)
+TurtlePosition position(void)
 {
-    if (!position)
-        return;
-
     if (!t)
         init();
 
-    *position = (Position) {t->pos.x, t->pos.y};
+    return (TurtlePosition) {t->pos.x, t->pos.y};
 }
 
 double heading(void)
