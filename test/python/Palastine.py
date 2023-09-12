@@ -21,5 +21,5 @@ for i in range(2):
 	left(90)
 end_fill()
 
-hideturtle()
-mainloop()
+hideturtle();
+done()

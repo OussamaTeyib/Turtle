@@ -26,14 +26,12 @@ int main(void)
     begin_fill();
     for (int i = 0; i < 2; i++)
     {
-        forward(80);
+        forward(128);
         left(90);
     }
     end_fill();
 
     // hideturtle()
-    // mainloop()
-
     show();
     return 0;
 }
