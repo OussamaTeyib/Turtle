@@ -4,7 +4,7 @@
 #include <turtle.h>
 #include <turtle_colors.h>
 
-#define MAX_CMDS 100
+#define MAX 0xFFFF
 
 typedef void (*cmdFunction) (void *);
 
@@ -15,27 +15,30 @@ typedef struct {
 
 typedef struct {
     double x, y;
-} Point;
+} FPOINT;
 
 static void init(void);
 static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam);
 static void CreateCanvas(void);
 static void cleanup(void);
 static void PostCommand(Command command);
-static void LinesToPolygon(void);
 static void ExecuteCommands(void);
+static void AddStepToPath(POINT step);
+static void AddLineToPath(POINT start, POINT end);
+static void AddArcToPath(FPOINT centre, FPOINT start, double alpha);
+static void MakePolygon(void);
 static void __move(void *params);
 static void __polygon(void *params);
 static void __arc(void *params);
 static double NormalizeAngle(double angle);
-static Point RotatePoint(Point centre, Point point, double alpha);
-static POINT ToStdCoord(Point pt);
+static FPOINT RotatePoint(FPOINT centre, FPOINT point, double alpha);
+static POINT ToStdCoord(FPOINT pt);
 static COLORREF GetColor(const char *szColor);
 
 typedef struct {
     HWND hwnd;
     HDC hdc;
-    Point pos;
+    FPOINT pos;
     double angle;
     double fullcircle;
     int penwidth;
@@ -43,6 +46,9 @@ typedef struct {
     COLORREF fillcolor;
     bool pendown;
     bool fill;
+    POINT *path;
+    int nStp;
+    int maxStp;
     Command *cmdQueue;
     int nCmd;
     int maxCmd;
@@ -62,8 +68,7 @@ typedef struct
 { 
     POINT *apt;
     int nPts;
-    COLORREF fillcolor;
-    bool fill;
+    COLORREF color;
 } PolygonParams;
 
 typedef struct {
@@ -87,7 +92,7 @@ static void init(void)
 
     t->hwnd = NULL;
     t->hdc = NULL;
-    t->pos = (Point) {0.0, 0.0};
+    t->pos = (FPOINT) {0.0, 0.0};
     t->angle = 0.0;
     t->fullcircle = 360.0;
     t->penwidth = 1;
@@ -95,18 +100,16 @@ static void init(void)
     t->fillcolor = BLACK;
     t->pendown = true;
     t->fill = false;
+    t->path = NULL;
+    t->nStp = 0;
+    t->maxStp = 0;
 
-    t->maxCmd = MAX_CMDS;
+    t->maxCmd = MAX;
     t->cmdQueue = calloc(t->maxCmd, sizeof (Command));
     if (!t->cmdQueue)
         return;
 
     t->nCmd = 0;
-    // add goto(0, 0) to the cmdQueue to improve polygon detection
-    MoveParams *initMove = malloc(sizeof (MoveParams));
-    initMove->dest = (POINT) {0, 0};
-    initMove->pendown = false;
-    PostCommand((Command) {__move, initMove});
 }
 
 static void CreateCanvas(void)
@@ -189,7 +192,6 @@ void show(void)
     if (!t)
        init();
 
-    LinesToPolygon();
     CreateCanvas();
     cleanup();
 }
@@ -207,6 +209,13 @@ static void cleanup(void)
     }
 
     free(t->cmdQueue);
+
+    if (t->fill)
+    {
+        free(t->path);
+        t->path = NULL;
+    }
+
     free(t);
     // prevent any re-use before re-initialization
     t = NULL;
@@ -239,103 +248,45 @@ static void ExecuteCommands(void)
     }
 }
 
-static void LinesToPolygon(void)
+static void AddStepToPath(POINT step)
 {
-    // skip if there is only the initial move in the cmdQueue
-    if (1 == t->nCmd)
+    if (!t || !t->path)
        return;
 
-    int maxCmd = t->maxCmd;
-    Command *cmdQueue = calloc(maxCmd, sizeof (Command));
-    if (!cmdQueue)
-       return;
-
-    int nCmd = 0;
-
-    for (int i = 0; i < t->nCmd; i++)
+    if (t->nStp == t->maxStp)
     {
-        if (nCmd == maxCmd)
-        {
-            maxCmd *= 2;
-            Command *temp = realloc(cmdQueue, maxCmd * sizeof (Command));
-            if (!temp)
-                return;
+        t->maxStp *= 2;
+        POINT *temp = realloc(t->path, t->maxStp * sizeof (POINT));
+        if (!temp)
+            return;
 
-            cmdQueue = temp;
-        } 
-        cmdQueue[nCmd++] = t->cmdQueue[i];
-
-        // check if this position is repeaated
-        if (t->cmdQueue[i].cmd == __move)
-        {
-            MoveParams *curPt = (MoveParams *) t->cmdQueue[i].params;
-            bool found = false;
-
-            int index;
-            for (int j = 0; j < i; j++)
-            {
-                if (t->cmdQueue[j].cmd != __move)
-                    continue;
-
-                MoveParams *pt = (MoveParams *) t->cmdQueue[j].params;
-                if (curPt->dest.x == pt->dest.x && curPt->dest.y == pt->dest.y)
-                {
-                    // Get the closest occurence
-                    index = j;
-                    found = true;
-                }
-            }
-
-            if (found)
-            {
-                PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
-                if (!polygonParams)
-                    return;
-
-                polygonParams->nPts = 0;
-                for (int k = index; k <= i; k++)
-                {
-                    if (t->cmdQueue[k].cmd != __move)
-                        continue;
-
-                    polygonParams->nPts++;
-                } 
-
-                polygonParams->apt = calloc(polygonParams->nPts, sizeof (POINT));
-                if (!polygonParams->apt)
-                    return;
-
-                for (int k = index, aptCounter = 0; k <= i; k++)
-                {
-                    if (t->cmdQueue[k].cmd != __move)
-                        continue;
-
-                    MoveParams *temp = (MoveParams *) t->cmdQueue[k].params;
-
-                    polygonParams->apt[aptCounter++] = temp->dest;
-                    // Get filling info from the last line
-                    polygonParams->fill = temp->fill;
-                    polygonParams->fillcolor = temp->fillcolor;
-                }
-
-                if (nCmd == maxCmd)
-                {
-                    maxCmd *= 2;
-                    Command *temp = realloc(cmdQueue, maxCmd * sizeof (Command));
-                    if (!temp)
-                    return;
-
-                    cmdQueue = temp;
-                } 
-                cmdQueue[nCmd++] = (Command) {__polygon, polygonParams};
-            }
-        }
+        t->path = temp;
     }
+    
+    t->path[t->nStp++] = step;
+}
 
-    free(t->cmdQueue);
-    t->cmdQueue = cmdQueue;
-    t->nCmd = nCmd;
-    t->maxCmd = maxCmd;
+static void MakePolygon(void)
+{
+    if (!t || !t->path)
+       return;
+
+    PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
+    if (!polygonParams)
+        return;
+
+    polygonParams->nPts = t->nStp;
+
+    polygonParams->apt = calloc(polygonParams->nPts, sizeof (POINT));
+    if (!polygonParams->apt)
+        return;
+
+    for (int i = 0; i < t->nStp; i++)
+        polygonParams->apt[i] = t->path[i];
+
+    polygonParams->color = t->fillcolor;
+
+    PostCommand((Command) {__polygon, polygonParams});
 }
 
 static void __move(void *params)
@@ -346,7 +297,7 @@ static void __move(void *params)
     if (moveParams->pendown)
         hPen = CreatePen(PS_SOLID, moveParams->penwidth, moveParams->pencolor);
     else
-        hPen = GetStockObject(NULL_PEN);   
+        hPen = GetStockObject(NULL_PEN);
 
     hPrevPen = SelectObject(t->hdc, hPen);
 
@@ -364,10 +315,7 @@ static void __polygon(void *params)
     PolygonParams *polygonParams = (PolygonParams *) params;
 
     HBRUSH hBrush, hPrevBrush;
-    if (polygonParams->fill)
-        hBrush = CreateSolidBrush(polygonParams->fillcolor);
-    else
-        hBrush = GetStockObject(NULL_BRUSH);   
+    hBrush = CreateSolidBrush(polygonParams->color);  
 
     hPrevBrush = SelectObject(t->hdc, hBrush);
     SelectObject(t->hdc, GetStockObject(NULL_PEN));
@@ -378,8 +326,7 @@ static void __polygon(void *params)
     // deselect hBrush before deleting it
     SelectObject(t->hdc, hPrevBrush);
 
-    if (polygonParams->fill)
-        DeleteObject(hBrush);
+    DeleteObject(hBrush);
 }
 
 static void __arc(void *params)
@@ -431,9 +378,9 @@ static double NormalizeAngle(double angle)
     return new_angle;
 }
 
-static Point RotatePoint(Point centre, Point pt, double alpha)
+static FPOINT RotatePoint(FPOINT centre, FPOINT pt, double alpha)
 {
-    Point new_pt, delta;
+    FPOINT new_pt, delta;
 
     delta.x = pt.x - centre.x;
     delta.y = pt.y - centre.y;
@@ -444,12 +391,58 @@ static Point RotatePoint(Point centre, Point pt, double alpha)
     return new_pt;
 }
 
-static POINT ToStdCoord(Point pt)
+static POINT ToStdCoord(FPOINT pt)
 {
     POINT std_pt;
     std_pt.x = round(pt.x);
     std_pt.y = round(pt.y);
     return std_pt;
+}
+
+static void AddLineToPath(POINT start, POINT end)
+{
+    if (!t || !t->path)
+        return;
+
+    POINT delta, step, curPt;;
+    delta.x = abs(end.x - start.x);
+    delta.y = abs(end.y - start.y);
+
+    step.x = (start.x < end.x)? 1: -1;
+    step.y = (start.y < end.y)? 1: -1;
+
+    LONG err = delta.x - delta.y;
+
+    curPt = start;
+    while (1)
+    {
+        AddStepToPath(curPt);
+
+        if (curPt.x == end.x && curPt.y == end.y)
+            break;
+
+        LONG e2 = 2 * err;
+        if (e2 > -delta.y)
+        {
+            err -= delta.y;
+            curPt.x += step.x;
+        }
+               
+        if (e2 < delta.x)
+        {
+            err += delta.x;
+            curPt.y += step.y;
+        }
+    }
+}
+
+static void AddArcToPath(FPOINT centre, FPOINT start, double beta)
+{
+    for (double i = 0; i <= beta; i += 2 * M_PI / 360)
+    {
+        POINT pt = ToStdCoord(RotatePoint(centre, start, i));
+        AddStepToPath(pt);   
+    }
 }
 
 void forward(double distance)
@@ -462,7 +455,7 @@ void forward(double distance)
         return;
 
     double alpha = t->angle / t->fullcircle * 2 * M_PI;
-    Point new_pos = RotatePoint(t->pos, (Point) {t->pos.x + distance, t->pos.y}, alpha);
+    FPOINT new_pos = RotatePoint(t->pos, (FPOINT) {t->pos.x + distance, t->pos.y}, alpha);
     moveParams->dest = ToStdCoord(new_pos);
 
     moveParams->penwidth = t->penwidth;
@@ -473,6 +466,9 @@ void forward(double distance)
     
     PostCommand((Command) {__move, moveParams});
 
+    if (t->fill)
+        AddLineToPath(ToStdCoord(t->pos), moveParams->dest);
+ 
     t->pos = new_pos;
 }
 
@@ -486,7 +482,7 @@ void backward(double distance)
         return;
 
     double alpha = (t->angle + t->fullcircle / 2) / t->fullcircle * 2 * M_PI;
-    Point new_pos = RotatePoint(t->pos, (Point) {t->pos.x + distance, t->pos.y}, alpha);
+    FPOINT new_pos = RotatePoint(t->pos, (FPOINT) {t->pos.x + distance, t->pos.y}, alpha);
     moveParams->dest = ToStdCoord(new_pos);
 
     moveParams->penwidth = t->penwidth;
@@ -497,6 +493,9 @@ void backward(double distance)
     
     PostCommand((Command) {__move, moveParams});
 
+    if (t->fill)
+        AddLineToPath(ToStdCoord(t->pos), moveParams->dest);
+ 
     t->pos = new_pos;
 }
 
@@ -509,7 +508,7 @@ void setposition(double x, double y)
     if (!moveParams)
         return;
  
-    moveParams->dest = ToStdCoord((Point) {x, y});
+    moveParams->dest = ToStdCoord((FPOINT) {x, y});
     moveParams->penwidth = t->penwidth;
     moveParams->pencolor = t->pencolor;
     moveParams->fillcolor = t->fillcolor;
@@ -518,7 +517,10 @@ void setposition(double x, double y)
     
     PostCommand((Command) {__move, moveParams});
 
-    t->pos = (Point) {x, y};
+    if (t->fill)
+        AddLineToPath(ToStdCoord(t->pos), moveParams->dest);
+
+    t->pos = (FPOINT) {x, y};
 }
 
 void home(void)
@@ -534,7 +536,7 @@ void arc(double r, double extent)
 
     double alpha = t->angle / t->fullcircle * 2 * M_PI;
     // To get the centre, if 'r' is positive, rotate the (t->pos.x, t->pos.y + abs(r)), otherwise rotate the point p(t->pos.x, t->pos.y - abs(r)).
-    Point centre = RotatePoint(t->pos, (Point) {t->pos.x, t->pos.y + r}, alpha);
+    FPOINT centre = RotatePoint(t->pos, (FPOINT) {t->pos.x, t->pos.y + r}, alpha);
      
     double beta = extent / t->fullcircle * 2 * M_PI;
     beta *= (r < 0)? -1: 1;  
@@ -549,7 +551,7 @@ void arc(double r, double extent)
     arcParams->rect.bottom = round(centre.y - r);
 
     arcParams->start = ToStdCoord(t->pos);
-    Point end = RotatePoint(centre, t->pos, beta);
+    FPOINT end = RotatePoint(centre, t->pos, beta);
     arcParams->end = ToStdCoord(end);
     // Draw the arc in counterclockwise direction if 'beta' is positive, otherwise in clockwise direction.
     arcParams->DrawCounterclockwise = (beta >= 0.0)? true: false;
@@ -562,6 +564,9 @@ void arc(double r, double extent)
 
     PostCommand((Command) {__arc, arcParams});
 
+    if (t->fill)
+        AddArcToPath(centre, t->pos, beta); 
+ 
     t->pos = end;
     t->angle = NormalizeAngle(t->angle + beta / (2 * M_PI) * t->fullcircle);
 }
@@ -722,7 +727,17 @@ void begin_fill(void)
     if (!t)
         init();
 
-     t->fill = true;
+    t->fill = true;
+    
+    if (t->path)
+    {
+        free(t->path);
+        t->path = NULL;
+    }
+
+    t->maxStp = MAX;
+    t->path = malloc(t->maxStp * sizeof (POINT));
+    t->nStp = 0;
 }
 
 void end_fill(void)
@@ -730,7 +745,15 @@ void end_fill(void)
     if (!t)
         init();
 
-     t->fill = false;
+    t->fill = false;
+
+    if (t->path)
+    {
+        MakePolygon();
+        t->maxStp = t->nStp = 0; 
+        free(t->path);
+        t->path = NULL;
+    }
 }
 
 TurtlePosition position(void)

@@ -3,10 +3,7 @@
 
 int main(void)
 {
-    color("red");
-    
-    fd(50.7);
-
+    end_fill();
     show();
     return 0;
 }

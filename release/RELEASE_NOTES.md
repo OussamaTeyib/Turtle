@@ -1,3 +1,7 @@
+## Release Notes for Turtle v0.2
+
+* Major Improvements and bug fixes.
+
 ## Release Notes for Turtle v0.1.1
 
 * Improvements.

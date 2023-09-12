@@ -11,17 +11,17 @@ int main(void)
         for (int j = 0; j < 8; j++)
         {
             if (!((i + j) % 2))
-                color("black");
-            else
                 color("brown");
+            else
+                color("yellow");
 
-            // begin_fill();
+            begin_fill();
             for (int k = 0; k < 4; k++)
             {
                 forward(50);
                 left(90);
             }
-            // end_fill();
+            end_fill();
             up();
             forward(50);
             down();
