@@ -58,10 +58,8 @@ typedef struct
 { 
     POINT dest;
     int penwidth;
-    COLORREF pencolor;
-    COLORREF fillcolor;
+    COLORREF color;
     bool pendown;
-    bool fill;
 } MoveParams;
 
 typedef struct
@@ -76,10 +74,8 @@ typedef struct {
     POINT start, end;
     bool DrawCounterclockwise;
     int penwidth;
-    COLORREF pencolor;
-    COLORREF fillcolor;
+    COLORREF color;
     bool pendown;
-    bool fill;
 } ArcParams;
 
 static Turtle *t = NULL;
@@ -254,6 +250,7 @@ static void AddStepToPath(POINT step)
        return;
 
     if (t->nStp == t->maxStp)
+
     {
         t->maxStp *= 2;
         POINT *temp = realloc(t->path, t->maxStp * sizeof (POINT));
@@ -295,7 +292,7 @@ static void __move(void *params)
 
     HPEN hPen, hPrevPen;
     if (moveParams->pendown)
-        hPen = CreatePen(PS_SOLID, moveParams->penwidth, moveParams->pencolor);
+        hPen = CreatePen(PS_SOLID, moveParams->penwidth, moveParams->color);
     else
         hPen = GetStockObject(NULL_PEN);
 
@@ -335,35 +332,20 @@ static void __arc(void *params)
 
     HPEN hPen, hPrevPen;
     if (arcParams->pendown)
-        hPen = CreatePen(PS_SOLID, arcParams->penwidth, arcParams->pencolor);
+        hPen = CreatePen(PS_SOLID, arcParams->penwidth, arcParams->color);
     else
         hPen = GetStockObject(NULL_PEN);
 
     hPrevPen = SelectObject(t->hdc, hPen);
 
-    // if the arc forms a circle that should be filled
-    if (arcParams->fill && arcParams->start.x == arcParams->end.x && arcParams->start.y == arcParams->end.y)
-    {
-        HBRUSH hBrush, hPrevBrush;
-        hBrush = CreateSolidBrush(arcParams->fillcolor);
-        hPrevBrush = SelectObject(t->hdc, hBrush);
+    if (!arcParams->DrawCounterclockwise)
+        SetArcDirection(t->hdc, AD_CLOCKWISE);
 
-        Ellipse(t->hdc, arcParams->rect.left, arcParams->rect.top, arcParams->rect.right, arcParams->rect.bottom);
-
-        SelectObject(t->hdc, hPrevBrush);
-        DeleteObject(hBrush);
-    }
-    else
-    {
-        if (!arcParams->DrawCounterclockwise)
-            SetArcDirection(t->hdc, AD_CLOCKWISE);
-
-        Arc(t->hdc, arcParams->rect.left, arcParams->rect.top, arcParams->rect.right, arcParams->rect.bottom, arcParams->start.x, arcParams->start.y, arcParams->end.x, arcParams->end.y);
-        MoveToEx(t->hdc, arcParams->end.x, arcParams->end.y, NULL);
+    Arc(t->hdc, arcParams->rect.left, arcParams->rect.top, arcParams->rect.right, arcParams->rect.bottom, arcParams->start.x, arcParams->start.y, arcParams->end.x, arcParams->end.y);
+    MoveToEx(t->hdc, arcParams->end.x, arcParams->end.y, NULL);
         
-        if (!arcParams->DrawCounterclockwise)
-            SetArcDirection(t->hdc, AD_COUNTERCLOCKWISE);
-    }
+    if (!arcParams->DrawCounterclockwise)
+        SetArcDirection(t->hdc, AD_COUNTERCLOCKWISE);
 
     SelectObject(t->hdc, hPrevPen);
     if (arcParams->pendown)
@@ -459,10 +441,8 @@ void forward(double distance)
     moveParams->dest = ToStdCoord(new_pos);
 
     moveParams->penwidth = t->penwidth;
-    moveParams->pencolor = t->pencolor;
-    moveParams->fillcolor = t->fillcolor;
+    moveParams->color = t->pencolor;
     moveParams->pendown = t->pendown;
-    moveParams->fill = t->fill;
     
     PostCommand((Command) {__move, moveParams});
 
@@ -486,10 +466,8 @@ void backward(double distance)
     moveParams->dest = ToStdCoord(new_pos);
 
     moveParams->penwidth = t->penwidth;
-    moveParams->pencolor = t->pencolor;
-    moveParams->fillcolor = t->fillcolor;
+    moveParams->color = t->pencolor;
     moveParams->pendown = t->pendown;
-    moveParams->fill = t->fill;
     
     PostCommand((Command) {__move, moveParams});
 
@@ -510,10 +488,8 @@ void setposition(double x, double y)
  
     moveParams->dest = ToStdCoord((FPOINT) {x, y});
     moveParams->penwidth = t->penwidth;
-    moveParams->pencolor = t->pencolor;
-    moveParams->fillcolor = t->fillcolor;
+    moveParams->color = t->pencolor;
     moveParams->pendown = t->pendown;
-    moveParams->fill = t->fill;
     
     PostCommand((Command) {__move, moveParams});
 
@@ -557,10 +533,8 @@ void arc(double r, double extent)
     arcParams->DrawCounterclockwise = (beta >= 0.0)? true: false;
 
     arcParams->penwidth = t->penwidth;
-    arcParams->pencolor = t->pencolor;
-    arcParams->fillcolor = t->fillcolor;
+    arcParams->color = t->pencolor;
     arcParams->pendown = t->pendown;
-    arcParams->fill = t->fill;
 
     PostCommand((Command) {__arc, arcParams});
 
