@@ -25,13 +25,13 @@ static void PostCommand(Command command);
 static void ExecuteCommands(void);
 static void AddStepToPath(POINT step);
 static void AddLineToPath(POINT start, POINT end);
-static void AddArcToPath(FPOINT centre, FPOINT start, double alpha);
+static void AddArcToPath(FPOINT centre, FPOINT start, double alpha, bool drawInCounterclockwiseDirection);
 static void MakePolygon(void);
 static void __move(void *params);
 static void __polygon(void *params);
 static void __arc(void *params);
 static double NormalizeAngle(double angle);
-static FPOINT RotatePoint(FPOINT centre, FPOINT point, double alpha);
+static FPOINT RotatePoint(FPOINT centre, FPOINT point, double alpha, bool inCounterclockwiseDirection);
 static POINT ToStdCoord(FPOINT pt);
 static COLORREF GetColor(const char *szColor);
 
@@ -360,15 +360,23 @@ static double NormalizeAngle(double angle)
     return new_angle;
 }
 
-static FPOINT RotatePoint(FPOINT centre, FPOINT pt, double alpha)
+static FPOINT RotatePoint(FPOINT centre, FPOINT pt, double alpha, bool inCounterclockwiseDirection)
 {
     FPOINT new_pt, delta;
 
     delta.x = pt.x - centre.x;
     delta.y = pt.y - centre.y;
-
-    new_pt.x = centre.x + delta.x * cos(alpha) - delta.y * sin(alpha);
-    new_pt.y = centre.y + delta.x * sin(alpha) + delta.y * cos(alpha);
+    
+    if (inCounterclockwiseDirection)
+    {
+        new_pt.x = centre.x + delta.x * cos(alpha) - delta.y * sin(alpha);
+        new_pt.y = centre.y + delta.x * sin(alpha) + delta.y * cos(alpha);
+    }
+    else
+    {
+        new_pt.x = centre.x + delta.x * cos(alpha) + delta.y * sin(alpha);
+        new_pt.y = centre.y - delta.x * sin(alpha) + delta.y * cos(alpha);
+    }
 
     return new_pt;
 }
@@ -418,12 +426,23 @@ static void AddLineToPath(POINT start, POINT end)
     }
 }
 
-static void AddArcToPath(FPOINT centre, FPOINT start, double beta)
+static void AddArcToPath(FPOINT centre, FPOINT start, double beta, bool drawInCounterclockwiseDirection)
 {
-    for (double i = 0; i <= beta; i += 2 * M_PI / 360)
+    if (beta >= 0)
     {
-        POINT pt = ToStdCoord(RotatePoint(centre, start, i));
-        AddStepToPath(pt);   
+        for (double i = 0; i <= beta; i += 2 * M_PI / 360)
+        {
+            POINT pt = ToStdCoord(RotatePoint(centre, start, i, drawInCounterclockwiseDirection));
+            AddStepToPath(pt);   
+        }
+    }
+    else
+    {
+        for (double i = 0; i >= beta; i -= 2 * M_PI / 360)
+        {
+            POINT pt = ToStdCoord(RotatePoint(centre, start, i, drawInCounterclockwiseDirection));
+            AddStepToPath(pt);   
+        }
     }
 }
 
@@ -437,7 +456,7 @@ void forward(double distance)
         return;
 
     double alpha = t->angle / t->fullcircle * 2 * M_PI;
-    FPOINT new_pos = RotatePoint(t->pos, (FPOINT) {t->pos.x + distance, t->pos.y}, alpha);
+    FPOINT new_pos = RotatePoint(t->pos, (FPOINT) {t->pos.x + distance, t->pos.y}, alpha, true);
     moveParams->dest = ToStdCoord(new_pos);
 
     moveParams->penwidth = t->penwidth;
@@ -462,7 +481,7 @@ void backward(double distance)
         return;
 
     double alpha = (t->angle + t->fullcircle / 2) / t->fullcircle * 2 * M_PI;
-    FPOINT new_pos = RotatePoint(t->pos, (FPOINT) {t->pos.x + distance, t->pos.y}, alpha);
+    FPOINT new_pos = RotatePoint(t->pos, (FPOINT) {t->pos.x + distance, t->pos.y}, alpha, true);
     moveParams->dest = ToStdCoord(new_pos);
 
     moveParams->penwidth = t->penwidth;
@@ -512,10 +531,9 @@ void arc(double r, double extent)
 
     double alpha = t->angle / t->fullcircle * 2 * M_PI;
     // To get the centre, if 'r' is positive, rotate the (t->pos.x, t->pos.y + abs(r)), otherwise rotate the point p(t->pos.x, t->pos.y - abs(r)).
-    FPOINT centre = RotatePoint(t->pos, (FPOINT) {t->pos.x, t->pos.y + r}, alpha);
+    FPOINT centre = RotatePoint(t->pos, (FPOINT) {t->pos.x, t->pos.y + r}, alpha, true);
      
-    double beta = extent / t->fullcircle * 2 * M_PI;
-    beta *= (r < 0)? -1: 1;  
+    double beta = extent / t->fullcircle * 2 * M_PI; 
 
     ArcParams *arcParams = malloc(sizeof (ArcParams));
     if (!arcParams)
@@ -527,10 +545,10 @@ void arc(double r, double extent)
     arcParams->rect.bottom = round(centre.y - r);
 
     arcParams->start = ToStdCoord(t->pos);
-    FPOINT end = RotatePoint(centre, t->pos, beta);
+    FPOINT end = RotatePoint(centre, t->pos, beta, (r > 0.0)? true: false);
     arcParams->end = ToStdCoord(end);
-    // Draw the arc in counterclockwise direction if 'beta' is positive, otherwise in clockwise direction.
-    arcParams->DrawCounterclockwise = (beta >= 0.0)? true: false;
+    // Draw the arc in counterclockwise direction if both 'r' and 'beta' have the same sign, otherwise in clockwise direction.
+    arcParams->DrawCounterclockwise = (r * beta > 0.0)? true: false;
 
     arcParams->penwidth = t->penwidth;
     arcParams->color = t->pencolor;
@@ -539,10 +557,11 @@ void arc(double r, double extent)
     PostCommand((Command) {__arc, arcParams});
 
     if (t->fill)
-        AddArcToPath(centre, t->pos, beta); 
+        AddArcToPath(centre, t->pos, beta, (r > 0.0)? true: false);
  
     t->pos = end;
-    t->angle = NormalizeAngle(t->angle + beta / (2 * M_PI) * t->fullcircle);
+    double new_angle = beta * ((r < 0.0)? -1: 1);
+    t->angle = NormalizeAngle(t->angle + new_angle / (2 * M_PI) * t->fullcircle);
 }
 
 void circle(double r)
