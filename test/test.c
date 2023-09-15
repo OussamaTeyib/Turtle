@@ -3,11 +3,10 @@
 
 int main(void)
 {
-    begin_fill();
-    circle(100);
+    left(90);
     fd(100);
-    color("yellow");
-    end_fill();
+    arc(-50, -90);
+    fd(100);
 
     show();
     return 0;
