@@ -11,10 +11,10 @@ void watch(int n)
         color("white");
         goto(140 * cos(i * M_PI / 30), 140 * sin(i * M_PI / 30));
         // hideturtle();
-        // Sleep(1);
+        Sleep(1000);
 
-        // if (i)
-        //    color("black");
+        if (i)
+            color("black");
 
         goto(0, 0);
     }
