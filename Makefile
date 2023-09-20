@@ -8,7 +8,7 @@ INCLUDE_DIR := include
 SRC_DIR := src
 LIB_DIR := lib
 
-SRC := $(SRC_DIR)\turtle.c
+SRC := $(SRC_DIR)\mt_turtle.c
 TARGET := $(LIB_DIR)\libturtle.dll
 
 $(TARGET): $(SRC)
