@@ -206,6 +206,7 @@ static void cleanup(void)
 
     free(t->cmdQueue);
 
+    // if end_fill() never called
     if (t->fill)
     {
         free(t->path);
@@ -220,7 +221,7 @@ static void cleanup(void)
 static void PostCommand(Command command)
 {
     if (!t || !t->cmdQueue)
-       return;
+        return;
 
     if (t->nCmd == t->maxCmd)
     {
@@ -250,7 +251,6 @@ static void AddStepToPath(POINT step)
        return;
 
     if (t->nStp == t->maxStp)
-
     {
         t->maxStp *= 2;
         POINT *temp = realloc(t->path, t->maxStp * sizeof (POINT));
@@ -261,29 +261,6 @@ static void AddStepToPath(POINT step)
     }
     
     t->path[t->nStp++] = step;
-}
-
-static void MakePolygon(void)
-{
-    if (!t || !t->path)
-       return;
-
-    PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
-    if (!polygonParams)
-        return;
-
-    polygonParams->nPts = t->nStp;
-
-    polygonParams->apt = calloc(polygonParams->nPts, sizeof (POINT));
-    if (!polygonParams->apt)
-        return;
-
-    for (int i = 0; i < t->nStp; i++)
-        polygonParams->apt[i] = t->path[i];
-
-    polygonParams->color = t->fillcolor;
-
-    PostCommand((Command) {__polygon, polygonParams});
 }
 
 static void __move(void *params)
@@ -567,6 +544,29 @@ void arc(double r, double extent)
 void circle(double r)
 {
     arc(r, t->fullcircle);
+}
+
+static void MakePolygon(void)
+{
+    if (!t || !t->path)
+       return;
+
+    PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
+    if (!polygonParams)
+        return;
+
+    polygonParams->nPts = t->nStp;
+
+    polygonParams->apt = calloc(polygonParams->nPts, sizeof (POINT));
+    if (!polygonParams->apt)
+        return;
+
+    for (int i = 0; i < t->nStp; i++)
+        polygonParams->apt[i] = t->path[i];
+
+    polygonParams->color = t->fillcolor;
+
+    PostCommand((Command) {__polygon, polygonParams});
 }
 
 void degrees(void)
