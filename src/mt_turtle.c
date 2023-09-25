@@ -7,11 +7,14 @@
 
 #define MAX 0xFFFF
 
+#define TM_CMD (WM_USER + 1)
+
 typedef void (*cmdFunction) (void *);
 
 typedef struct {
     cmdFunction cmd;
     void *params;
+    bool isExecuted;
 } Command;
 
 typedef struct {
@@ -24,7 +27,6 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
 static void cleanup(void);
 static void PostCommand(Command command);
 static void ExecuteCommands(void);
-static void TriggerRedraw(void);
 static void AddStepToPath(POINT step);
 static void AddLineToPath(POINT start, POINT end);
 static void AddArcToPath(FPOINT centre, FPOINT start, double alpha, bool drawInCounterclockwiseDirection);
@@ -168,9 +170,17 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
 
     switch(message)
     {
-        case WM_SIZE:
-            xClient = LOWORD(lParam);
-            yClient = HIWORD(lParam);  
+       case WM_SIZE:
+           xClient = LOWORD(lParam);
+           yClient = HIWORD(lParam);
+
+           for (int i = 0; i < t->nCmd; i++)
+               t->cmdQueue[i].isExecuted = false;
+           return 0;
+
+        case TM_CMD:
+            InvalidateRect(t->hwnd, NULL, FALSE);
+            UpdateWindow(t->hwnd);
             return 0;
 
         case WM_PAINT:
@@ -180,7 +190,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
             SetWindowExtEx(t->hdc, 1, 1, NULL);
             SetViewportExtEx(t->hdc, 1, -1, NULL); // '-' to have the y-axis increase upward
             SetViewportOrgEx(t->hdc, xClient / 2, yClient / 2, NULL);
- 
+
             ExecuteCommands();
 
             EndPaint(t->hwnd, &ps);
@@ -216,6 +226,7 @@ static void cleanup(void)
 
     free(t->cmdQueue);
 
+    // if end_fill() never called
     if (t->fill)
     {
         free(t->path);
@@ -230,7 +241,7 @@ static void cleanup(void)
 static void PostCommand(Command command)
 {
     if (!t || !t->cmdQueue)
-       return;
+        return;
 
     if (t->nCmd == t->maxCmd)
     {
@@ -243,21 +254,21 @@ static void PostCommand(Command command)
     }
     
     t->cmdQueue[t->nCmd++] = command;
+
+    SendMessage(t->hwnd, TM_CMD, 0, 0);
 }
 
 static void ExecuteCommands(void)
 {
     for (int i = 0; i < t->nCmd; i++)
     {
+         if (t->cmdQueue[i].isExecuted)
+             continue;
+
          Command command = t->cmdQueue[i];
          command.cmd(command.params);
+         t->cmdQueue[i].isExecuted = true;
     }
-}
-
-void TriggerRedraw(void)
-{
-    InvalidateRect(t->hwnd, NULL, TRUE);
-    UpdateWindow(t->hwnd);
 }
 
 static void AddStepToPath(POINT step)
@@ -266,7 +277,6 @@ static void AddStepToPath(POINT step)
        return;
 
     if (t->nStp == t->maxStp)
-
     {
         t->maxStp *= 2;
         POINT *temp = realloc(t->path, t->maxStp * sizeof (POINT));
@@ -277,31 +287,6 @@ static void AddStepToPath(POINT step)
     }
     
     t->path[t->nStp++] = step;
-}
-
-static void MakePolygon(void)
-{
-    if (!t || !t->path)
-       return;
-
-    PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
-    if (!polygonParams)
-        return;
-
-    polygonParams->nPts = t->nStp;
-
-    polygonParams->apt = calloc(polygonParams->nPts, sizeof (POINT));
-    if (!polygonParams->apt)
-        return;
-
-    for (int i = 0; i < t->nStp; i++)
-        polygonParams->apt[i] = t->path[i];
-
-    polygonParams->color = t->fillcolor;
-
-    PostCommand((Command) {__polygon, polygonParams});
-
-    TriggerRedraw();
 }
 
 static void __move(void *params)
@@ -481,13 +466,12 @@ void forward(double distance)
     moveParams->color = t->pencolor;
     moveParams->pendown = t->pendown;
     
-    PostCommand((Command) {__move, moveParams});
+    PostCommand((Command) {__move, moveParams, false});
 
     if (t->fill)
         AddLineToPath(ToStdCoord(t->pos), moveParams->dest);
  
     t->pos = new_pos;
-    TriggerRedraw();
 }
 
 void backward(double distance)
@@ -507,13 +491,12 @@ void backward(double distance)
     moveParams->color = t->pencolor;
     moveParams->pendown = t->pendown;
     
-    PostCommand((Command) {__move, moveParams});
+    PostCommand((Command) {__move, moveParams, false});
 
     if (t->fill)
         AddLineToPath(ToStdCoord(t->pos), moveParams->dest);
  
     t->pos = new_pos;
-    TriggerRedraw();
 }
 
 void setposition(double x, double y)
@@ -530,13 +513,12 @@ void setposition(double x, double y)
     moveParams->color = t->pencolor;
     moveParams->pendown = t->pendown;
     
-    PostCommand((Command) {__move, moveParams});
+    PostCommand((Command) {__move, moveParams, false});
 
     if (t->fill)
         AddLineToPath(ToStdCoord(t->pos), moveParams->dest);
 
     t->pos = (FPOINT) {x, y};
-    TriggerRedraw();
 }
 
 void home(void)
@@ -575,7 +557,7 @@ void arc(double r, double extent)
     arcParams->color = t->pencolor;
     arcParams->pendown = t->pendown;
 
-    PostCommand((Command) {__arc, arcParams});
+    PostCommand((Command) {__arc, arcParams, false});
 
     if (t->fill)
         AddArcToPath(centre, t->pos, beta, (r > 0.0)? true: false);
@@ -583,13 +565,34 @@ void arc(double r, double extent)
     t->pos = end;
     double new_angle = beta * ((r < 0.0)? -1: 1);
     t->angle = NormalizeAngle(t->angle + new_angle / (2 * M_PI) * t->fullcircle);
-
-    TriggerRedraw();
 }
 
 void circle(double r)
 {
     arc(r, t->fullcircle);
+}
+
+static void MakePolygon(void)
+{
+    if (!t || !t->path)
+       return;
+
+    PolygonParams *polygonParams = malloc(sizeof (PolygonParams));
+    if (!polygonParams)
+        return;
+
+    polygonParams->nPts = t->nStp;
+
+    polygonParams->apt = calloc(polygonParams->nPts, sizeof (POINT));
+    if (!polygonParams->apt)
+        return;
+
+    for (int i = 0; i < t->nStp; i++)
+        polygonParams->apt[i] = t->path[i];
+
+    polygonParams->color = t->fillcolor;
+
+    PostCommand((Command) {__polygon, polygonParams, false});
 }
 
 void degrees(void)

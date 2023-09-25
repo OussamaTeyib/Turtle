@@ -5,17 +5,15 @@
 
 void watch(int n)
 {
-    for (int i = n; i > 0; i--)
+    home();
+    for (int i = n; i >= 0; i--)
     {
         width(5);
         color("white");
         goto(140 * cos(i * M_PI / 30), 140 * sin(i * M_PI / 30));
-        // hideturtle();
+
         Sleep(1000);
-
-        if (i)
-            color("black");
-
+        color("black");
         goto(0, 0);
     }
 }
@@ -42,7 +40,6 @@ int main(int argc, char *argv[])
         width(5);
         color("black");
         goto(140 * cos(i * M_PI / 30), 140 * sin(i * M_PI / 30));
-        // hideturtle();
         goto(0, 0);
     }
 
