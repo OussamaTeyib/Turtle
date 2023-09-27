@@ -34,6 +34,7 @@ static void MakePolygon(void);
 static void __move(void *params);
 static void __polygon(void *params);
 static void __arc(void *params);
+static void __bkcolor(void *params);
 static double NormalizeAngle(double angle);
 static FPOINT RotatePoint(FPOINT centre, FPOINT point, double alpha, bool inCounterclockwiseDirection);
 static POINT ToStdCoord(FPOINT pt);
@@ -49,6 +50,7 @@ typedef struct {
     int penwidth;
     COLORREF pencolor;
     COLORREF fillcolor;
+    HBRUSH bkBrush;
     bool pendown;
     bool fill;
     POINT *path;
@@ -83,6 +85,12 @@ typedef struct {
     bool pendown;
 } ArcParams;
 
+typedef struct
+{ 
+    Command *cmds;
+    int nCmd;
+} BkColorParams;
+
 static Turtle *t = NULL;
 
 static void init(void)
@@ -99,6 +107,7 @@ static void init(void)
     t->penwidth = 1;
     t->pencolor = BLACK;
     t->fillcolor = BLACK;
+    t->bkBrush = NULL;
     t->pendown = true;
     t->fill = false;
     t->path = NULL;
@@ -175,12 +184,24 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM l
            yClient = HIWORD(lParam);
 
            for (int i = 0; i < t->nCmd; i++)
+           {
+               if (t->cmdQueue[i].cmd == __bkcolor)
+                   continue;
+
                t->cmdQueue[i].isExecuted = false;
+           }
            return 0;
 
         case TM_CMD:
-            InvalidateRect(t->hwnd, NULL, FALSE);
-            UpdateWindow(t->hwnd);
+            if (wParam != 1)
+            {
+                InvalidateRect(t->hwnd, NULL, FALSE);
+            }
+            else
+            {
+                SetClassLongPtr(t->hwnd, GCLP_HBRBACKGROUND, (LONG_PTR) t->bkBrush);
+                InvalidateRect(t->hwnd, NULL, TRUE);
+            }
             return 0;
 
         case WM_PAINT:
@@ -221,6 +242,13 @@ static void cleanup(void)
             PolygonParams *temp = (PolygonParams *) t->cmdQueue[i].params;
             free(temp->apt);
         }
+        
+        if (t->cmdQueue[i].cmd == __bkcolor)
+        {
+            BkColorParams *temp = (BkColorParams *) t->cmdQueue[i].params;
+            free(temp->cmds);
+        }
+
         free(t->cmdQueue[i].params);
     }
 
@@ -231,6 +259,12 @@ static void cleanup(void)
     {
         free(t->path);
         t->path = NULL;
+    }
+
+    if (t->bkBrush)
+    {
+        DeleteObject(t->bkBrush);
+        t->bkBrush = NULL;
     }
 
     free(t);
@@ -255,7 +289,9 @@ static void PostCommand(Command command)
     
     t->cmdQueue[t->nCmd++] = command;
 
-    SendMessage(t->hwnd, TM_CMD, 0, 0);
+    while(!t->hwnd);
+
+    SendMessage(t->hwnd, TM_CMD, (command.cmd == __bkcolor? 1: 0), 0);
 }
 
 static void ExecuteCommands(void)
@@ -353,6 +389,17 @@ static void __arc(void *params)
     SelectObject(t->hdc, hPrevPen);
     if (arcParams->pendown)
         DeleteObject(hPen);
+}
+
+static void __bkcolor(void *params)
+{
+    BkColorParams *bkColorParams = (BkColorParams *) params;
+
+    for (int i = 0; i < bkColorParams->nCmd; i++)
+    {
+        Command command = bkColorParams->cmds[i];
+        command.cmd(command.params);
+    }
 }
 
 static double NormalizeAngle(double angle)
@@ -707,7 +754,7 @@ void pencolor(const char *szColor)
     if ((color = GetColor(szColor)) == (COLORREF) -1)
         return;
 
-    t->pencolor = color; 
+    t->pencolor = color;
 }
 
 void fillcolor(const char *szColor)
@@ -722,7 +769,54 @@ void fillcolor(const char *szColor)
     if ((color = GetColor(szColor)) == (COLORREF) -1)
         return;
 
-    t->fillcolor = color; 
+    t->fillcolor = color;
+}
+
+void bgcolor(const char *szColor)
+{
+    if (!szColor)
+        return;
+
+    if (!t)
+        init();
+
+    COLORREF color;
+    if ((color = GetColor(szColor)) == (COLORREF) -1)
+        return;
+
+    if (t->bkBrush)
+    {
+        DeleteObject(t->bkBrush);
+        t->bkBrush = NULL;
+    }
+    t->bkBrush = CreateSolidBrush(color);
+
+    BkColorParams *bkColorParams = malloc(sizeof (BkColorParams));
+    if (!bkColorParams)
+        return;
+
+    bkColorParams->nCmd = 0;
+    for (int i = 0; i < t->nCmd; i++)
+    {
+        if (t->cmdQueue[i].cmd == __bkcolor)
+            continue;
+
+        bkColorParams->nCmd++; 
+    }
+
+    bkColorParams->cmds = calloc(bkColorParams->nCmd, sizeof (Command));
+    if (!bkColorParams->cmds)
+        return;
+
+    for (int i = 0, counter = 0; i < t->nCmd; i++)
+    {
+        if (t->cmdQueue[i].cmd == __bkcolor)
+            continue;
+
+        bkColorParams->cmds[counter++] = t->cmdQueue[i];
+    }
+
+    PostCommand((Command) {__bkcolor, bkColorParams, false});
 }
 
 void penup(void)

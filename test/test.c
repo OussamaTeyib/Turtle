@@ -3,10 +3,7 @@
 
 int main(void)
 {
-    left(90);
-    fd(100);
-    arc(-50, -90);
-    fd(100);
+    bgcolor("green");
 
     show();
     return 0;

@@ -2,6 +2,7 @@
 
 int main(void)
 {
+    bgcolor("black");
     char *colors[] = {"red", "magenta", "blue", "cyan", "green", "yellow"};
 
     pensize(2);

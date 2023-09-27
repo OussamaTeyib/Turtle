@@ -2,11 +2,11 @@
 
 int main(void)
 {
-    // bgcolor("grey");
+    bgcolor("grey");
     up();
     goto(-150, -100);
     down();
-    color("grey");
+    color("white");
     begin_fill();
     for (int i = 0; i < 4; i++)
     {
@@ -30,7 +30,7 @@ int main(void)
     up();
     goto(-150, -50);
     down();
-    color("grey");
+    color("white");
     begin_fill();
     for (int i = 0; i < 4; i++)
     {
@@ -53,7 +53,7 @@ int main(void)
     up();
     goto(-30, 20);
     down();
-    // width(5);
+    width(5);
     color("blue");
     for (int i = 0; i < 3; i++)
     {
@@ -61,8 +61,6 @@ int main(void)
         right(120);
     }
 
-    // hideturtle();
-    // mainloop();
     show();
     return 0;
 }
