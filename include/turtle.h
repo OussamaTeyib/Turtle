@@ -38,6 +38,7 @@ void end_fill(void);
 void color(const char *color);
 void pencolor(const char *color);
 void fillcolor(const char *color);
+void bgcolor(const char *color);
 
 
 #define fd(distance) forward(distance)
