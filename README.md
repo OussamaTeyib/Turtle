@@ -1,13 +1,13 @@
-# C Turtle Graphics
+## C Turtle Graphics
 This is a C implementation of Python's Turtle Graphics using Windows API.
 
-## Overview:
+### Overview:
 Turtle Graphics is a popular educational tool that introduces programming concepts through drawing. This implementation allows you to create graphics and drawings using a turtle-like interface in C.
 
-## Getting Started:
-Download the latest release from [here](https://github.com/OussamaTeyib/Turtle/releases)
+### Getting Started:
+- Download the latest release from [here](https://github.com/OussamaTeyib/Turtle/releases)
 
-## Usage:
+### Usage:
 Many samples can be found [here](samples)
 
 <table>
@@ -63,5 +63,5 @@ from turtle import *
 </td>
 </table>
 
-## Credits
-This library was developped by Oussama Teyib during the summer of 2023.
+### License:
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
