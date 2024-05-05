@@ -11,6 +11,13 @@ LIB_DIR := lib
 SRC := $(SRC_DIR)\turtle.c
 TARGET := $(LIB_DIR)\libturtle.dll
 
+all: $(TARGET) clear
+
 $(TARGET): $(SRC)
 	@mkdir -p lib
 	@$(CC) $(CFLAGS) $(LDFLAGS) $(DEFINES) -o $@ $(SRC) -I$(INCLUDE_DIR) $(LIBS)
+
+.PHONY: clear
+
+clear:
+	@rm -r samples/*.exe
