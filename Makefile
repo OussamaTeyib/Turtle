@@ -17,7 +17,12 @@ $(TARGET): $(SRC)
 	@mkdir -p lib
 	@$(CC) $(CFLAGS) $(LDFLAGS) $(DEFINES) -o $@ $(SRC) -I$(INCLUDE_DIR) $(LIBS)
 
-.PHONY: clear
+.PHONY: clear push
+
+push:
+	@git add .
+	@git commit -m $(msg)
+	@git push orgin main
 
 clear:
 	@rm -r samples/*.exe
