@@ -24,14 +24,14 @@ $(TARGET): $(SRC)
 # zip release's files
 zip:
 	@mkdir -p $(RELEASE_DIR)
-	@7z a -tzip $(RELEASE_DIR)/$(ver).zip $(INCLUDE_DIR)/* $(LIB_DIR)/*
+	@7z a -tzip "$(RELEASE_DIR)/Turtle $(ver).zip" $(INCLUDE_DIR)/* $(LIB_DIR)/*
 
 # publish a release
 release:
-	@git tag -a $(ver) -m "Release $(ver)"
-	@git push origin $(ver)
-	@gh release create $(ver)
-	@gh release upload $(ver) $(RELEASE_DIR)/$(ver).zip
+	@git tag -a v$(ver) -m "Release v$(ver)"
+	@git push origin v$(ver)
+	@gh release create v$(ver)
+	@gh release upload v$(ver) "$(RELEASE_DIR)/Turtle $(ver).zip"
 
 # push to Github
 push:
