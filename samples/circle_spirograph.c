@@ -2,7 +2,7 @@
 
 int main(void)
 {
-    bgcolor("black");
+    // bgcolor("black");
     char *colors[] = {"red", "magenta", "blue", "cyan", "green", "yellow"};
 
     pensize(2);
