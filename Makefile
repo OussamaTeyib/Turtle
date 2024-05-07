@@ -11,18 +11,22 @@ LIB_DIR := lib
 SRC := $(SRC_DIR)\turtle.c
 TARGET := $(LIB_DIR)\libturtle.dll
 
-all: $(TARGET) clear
+all: $(TARGET) clean
 
 $(TARGET): $(SRC)
 	@mkdir -p lib
 	@$(CC) $(CFLAGS) $(LDFLAGS) $(DEFINES) -o $@ $(SRC) -I$(INCLUDE_DIR) $(LIBS)
 
-.PHONY: clear push
+.PHONY: clean commit push
+
+f = .
+
+commit:
+	@git add $(f)
+	@git commit -m $(msg)
 
 push:
-	@git add .
-	@git commit -m $(msg)
-	@git push orgin main
+	@git push origin main
 
-clear:
+clean:
 	@rm -r samples/*.exe
