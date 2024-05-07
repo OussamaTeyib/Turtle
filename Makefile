@@ -10,13 +10,14 @@ LIB_DIR = lib
 RELEASE_DIR = release
 
 TARGET = $(LIB_DIR)\libturtle.dll
+SRC = $(SRC_DIR)\turtle.c
 
 all: $(TARGET) clean
 
 # build the library
 $(TARGET): $(SRC)
 	@mkdir -p $(LIB_DIR)
-	@$(CC) $(CFLAGS) $(LDFLAGS) $(DEFINES) -o $@ $(SRC_DIR)\turtle.c -I$(INCLUDE_DIR) $(LIBS)
+	@$(CC) $(CFLAGS) $(LDFLAGS) $(DEFINES) -o $@ $(SRC) -I$(INCLUDE_DIR) $(LIBS)
 
 .PHONY: clean push zip release
 
@@ -40,4 +41,4 @@ push:
 
 # remove all executables
 clean:
-	@rm -r samples/*.exe
+	@rm -f samples/*.exe
