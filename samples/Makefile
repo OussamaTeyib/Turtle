@@ -3,14 +3,15 @@ CFLAGS := -g -std=c2x -Wall -Wextra -Werror
 LIBS := -lturtle
 DEFINES := -D_USE_MATH_DEFINES
 
-SRC := $(arg)
+SRC := $(src)
 INCLUDE_DIR := ../include
 LIB_DIR := ../lib
 
-.PHONY: build clean
 
-build: $(SRC)
+$($(src):.c, .exe): $(SRC)
 	$(CC) $(CFLAGS) $(DEFINES) $(SRC) -I$(INCLUDE_DIR) -L$(LIB_DIR) $(LIBS)
+
+.PHONY: clean
 
 clean:
 	rm -f *.exe
