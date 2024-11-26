@@ -1,3 +1,6 @@
+# Output files
 lib/
-release/
-samples/*.exe
+obj/
+*.o
+*.lib
+*.exe

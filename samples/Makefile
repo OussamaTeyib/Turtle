@@ -1,25 +1,31 @@
+# Compiler and tools
 CC = gcc
-CFLAGS = -g -std=c2x -Wall -Wextra -Werror
+AR = ar
+CFLAGS = -Wall -Wextra -Werror -std=c17 -g
 LIBS = -lturtle
 DEFINES = -D_USE_MATH_DEFINES
 
-SRCS = $(wildcard *.c)
-BINS = $(patsubst %.c, %.exe, $(SRCS))
-
-INCLUDE_DIR = ../include
+# Directories
+SRC_DIR = .
+INCLUDE_DIR = ../src
+BIN_DIR = .
 LIB_DIR = ../lib
 
+# Source files and targets
+SOURCES = $(wildcard $(SRC_DIR)/*.c)
+BINS = $(patsubst $(SRC_DIR)/%.c, $(BIN_DIR)/%.exe, $(SOURCES))
+
+# Phony targets
+.PHONY: all clean
+
+# Default rule
 all: $(BINS)
 
-# compile all sources
-%.exe: %.c
-	$(CC) $(CFLAGS) $(DEFINES) $< -o $@ -I$(INCLUDE_DIR) -L$(LIB_DIR) $(LIBS)
+# Compile source files into executables
+$(BIN_DIR)/%.exe: $(SRC_DIR)/%.c
+	mkdir -p $(BIN_DIR)
+	$(CC) $(CFLAGS) $(DEFINES) -I$(INCLUDE_DIR) -L$(LIB_DIR) $(LIBS) $< -o $@
 
-.PHONY: clean build
-
-# compile one source
-build:
-	$(CC) $(CFLAGS) $(DEFINES) $(src) -o $(patsubst %.c, %.exe, $(src)) -I$(INCLUDE_DIR) -L$(LIB_DIR) $(LIBS)
-
+# remove all outputs
 clean:
-	rm -f *.exe
+	rm -rf $(BIN_DIR)/*.exe
