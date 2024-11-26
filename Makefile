@@ -1,44 +1,36 @@
+# Compiler and tools
 CC = gcc
-CFLAGS = -g -std=c2x -Wall -Wextra -Werror
-LDFLAGS = -shared
+AR = ar
+CFLAGS = -Wall -Wextra -Werror -std=c17 -c -g
 LIBS = -lgdi32
 DEFINES = -D_USE_MATH_DEFINES
 
-INCLUDE_DIR = include
+# Directories
 SRC_DIR = src
+OBJ_DIR = obj
 LIB_DIR = lib
-RELEASE_DIR = release
 
-TARGET = $(LIB_DIR)\libturtle.dll
-SRC = $(SRC_DIR)\turtle.c
+# Source files and targets
+SOURCES = $(wildcard $(SRC_DIR)/*.c)
+OBJECTS = $(patsubst $(SRC_DIR)/%.c, $(OBJ_DIR)/%.o, $(SOURCES))
+TARGET = $(LIB_DIR)/libturtle.lib
 
-all: $(TARGET) clean
+# Phony targets
+.PHONY: all clean
 
-# build the library
-$(TARGET): $(SRC)
-	@mkdir -p $(LIB_DIR)
-	@$(CC) $(CFLAGS) $(LDFLAGS) $(DEFINES) -o $@ $(SRC) -I$(INCLUDE_DIR) $(LIBS)
+# Default rule
+all: $(TARGET)
 
-.PHONY: clean push zip release
+# Build the static library
+$(TARGET): $(OBJECTS)
+	mkdir -p $(LIB_DIR)
+	$(AR) rcs $@ $^
 
-# zip release's files
-zip:
-	@mkdir -p $(RELEASE_DIR)
-	@7z a -tzip "$(RELEASE_DIR)/Turtle $(ver).zip" $(INCLUDE_DIR)/* $(LIB_DIR)/*
+# Compile source files into object files
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	mkdir -p $(OBJ_DIR)
+	$(CC) $(CFLAGS) $(DEFINES) $(LIBS) $< -o $@ 
 
-# publish a release
-release:
-	@git tag -a v$(ver) -m "Release v$(ver)"
-	@git push origin v$(ver)
-	@gh release create v$(ver)
-	@gh release upload v$(ver) "$(RELEASE_DIR)/Turtle $(ver).zip"
-
-# push to Github
-push:
-	@git add .
-	@git commit -m "$(msg)"
-	@git push origin main
-
-# remove all executables
+# remove all outputs
 clean:
-	@rm -f samples/*.exe
+	rm -rf $(OBJ_DIR) $(LIB_DIR)

@@ -1,8 +1,8 @@
 #include <windows.h>
 #include <math.h>
 #include <stdbool.h>
-#include <turtle.h>
-#include <turtle_colors.h>
+#include "turtle.h"
+#include "turtle_colors.h"
 
 #define MAX 0xFFFF
 
